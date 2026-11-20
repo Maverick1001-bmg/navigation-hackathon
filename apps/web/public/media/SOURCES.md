@@ -8,3 +8,4 @@ Source pages, copied from the ui-mockup. Third-party content: rights belong to t
 - `flood.mp4`: https://giphy.com/gifs/rain-umbrella-precipitation-qQpjCIaXGJevAs8T1j
 - `police.mp4`: https://giphy.com/gifs/netflix-police-brickleberry-paradise-pd-8YEZs6qgDOXnHbaSDV
 - `hazard.mp4`: https://giphy.com/gifs/fail-scary-driver-school-zone-8wYaqQ3hmxsYY41KmH
+- `six-seven.mp4`: plays on arrival. GIPHY source page not recorded; add it here.

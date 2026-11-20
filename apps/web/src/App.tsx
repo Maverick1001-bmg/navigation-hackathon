@@ -47,7 +47,7 @@ export default function App() {
   const [routeLoading, setRouteLoading] = useState(false)
   const currentStep = useCurrentStep(route?.steps, route?.polyline, userPos)
   const [navigating, setNavigating] = useState(false)
-  const [meme, setMeme] = useState<IncidentType | null>(null)
+  const [meme, setMeme] = useState<{ clip: string; label: string } | null>(null)
   const view3D = use3D(map)
   // In navigation mode the camera follows without needing 3D
   const navCam = useNavCamera(map, navigating || (view3D.is3D && !!route), route?.polyline ?? null, userPos)
@@ -171,7 +171,7 @@ export default function App() {
       try {
         await reportIncident(type, { lat: at.lat, lng: at.lng })
         setNotice(`${INCIDENT_INFO[type].emoji} ${INCIDENT_INFO[type].label} reported${userPos ? '' : ' at the map centre'}. Thanks!`)
-        setMeme(type)
+        setMeme({ clip: type, label: INCIDENT_INFO[type].label })
         refreshIncidents()
       } catch (err) {
         setNotice((err as Error).message)
@@ -307,6 +307,7 @@ export default function App() {
   const arrive = useCallback(() => {
     clearRoute()
     setNotice("You've arrived.")
+    setMeme({ clip: 'six-seven', label: 'Arrival' })
   }, [clearRoute])
   const nav = useNavProgress(route, userPos, currentStep, navigating, reroute, arrive)
 
@@ -418,11 +419,11 @@ export default function App() {
       {meme && (
         <div className="meme">
           <video
-            src={`/media/${meme}.mp4`}
+            src={`/media/${meme.clip}.mp4`}
             muted
             playsInline
             autoPlay
-            aria-label={`${INCIDENT_INFO[meme].label} meme`}
+            aria-label={`${meme.label} meme`}
             onEnded={() => setMeme(null)}
             onError={() => setMeme(null)}
           />
