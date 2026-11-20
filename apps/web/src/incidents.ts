@@ -4,13 +4,13 @@ import { timeAgo, type Incident, type IncidentType } from './api'
 // Incident markers (red, emoji per type). DOM markers so emoji render on every phone.
 // Tapping one opens a popup with a "Still there 👍" confirm button.
 
-export const INCIDENT_INFO: Record<IncidentType, { emoji: string; label: string }> = {
-  jam: { emoji: '🚗', label: 'Traffic jam' },
-  accident: { emoji: '💥', label: 'Accident' },
-  police: { emoji: '🚓', label: 'Police' },
-  flood: { emoji: '🌊', label: 'Flood' },
-  roadworks: { emoji: '🚧', label: 'Roadworks' },
-  hazard: { emoji: '⚠️', label: 'Hazard' },
+export const INCIDENT_INFO: Record<IncidentType, { emoji: string; label: string; icon: string }> = {
+  jam: { emoji: '🚗', label: 'Traffic jam', icon: '/icons/jam.webp' },
+  accident: { emoji: '💥', label: 'Accident', icon: '/icons/accident.webp' },
+  police: { emoji: '🚓', label: 'Police', icon: '/icons/police.webp' },
+  flood: { emoji: '🌊', label: 'Flood', icon: '/icons/flood.webp' },
+  roadworks: { emoji: '🚧', label: 'Roadworks', icon: '/icons/roadworks.webp' },
+  hazard: { emoji: '⚠️', label: 'Hazard', icon: '/icons/hazard.webp' },
 }
 
 type Entry = { marker: Marker; el: HTMLDivElement; incident: Incident }
@@ -68,7 +68,10 @@ export function createIncidentMarkers(map: MapLibreMap, onConfirm: (id: string) 
         }
         const el = document.createElement('div')
         el.className = 'incident-marker'
-        el.textContent = (INCIDENT_INFO[i.type] ?? INCIDENT_INFO.hazard).emoji
+        const icon = document.createElement('img')
+        icon.src = (INCIDENT_INFO[i.type] ?? INCIDENT_INFO.hazard).icon
+        icon.alt = ''
+        el.append(icon)
         const marker = new Marker({ element: el })
           .setLngLat([i.location.lng, i.location.lat])
           .setPopup(new Popup({ offset: 18, closeButton: true, maxWidth: '240px' }).setDOMContent(popupContent(i)))

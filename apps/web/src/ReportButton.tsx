@@ -30,7 +30,7 @@ export default function ReportButton({ onReport, hidden }: Props) {
         aria-label="Report an incident"
         aria-expanded={open}
       >
-        {open ? '×' : '⚠️'}
+        {open ? '×' : <><img src="/icons/hazard.webp" alt="" width={28} height={28} /> Hazards</>}
       </button>
 
       {open && (
@@ -44,7 +44,7 @@ export default function ReportButton({ onReport, hidden }: Props) {
                 onClick={() => pick(t)}
                 disabled={busy !== null}
               >
-                <span className="report-sheet__emoji">{INCIDENT_INFO[t].emoji}</span>
+                <img className="report-sheet__icon" src={INCIDENT_INFO[t].icon} alt="" width={44} height={44} />
                 <span>{busy === t ? 'Sending…' : INCIDENT_INFO[t].label}</span>
               </button>
             ))}

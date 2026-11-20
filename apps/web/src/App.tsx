@@ -14,6 +14,8 @@ import { createIncidentMarkers, INCIDENT_INFO, type IncidentMarkers } from './in
 import ReportButton from './ReportButton'
 import { useCurrentStep } from './currentStep'
 import { use3D, useNavCamera } from './navCamera'
+import { useNavProgress } from './navigation'
+import { NavBanner, NavBar } from './NavBanner'
 import { useTransit } from './transit/useTransit' // transit
 
 const INCIDENT_POLL_MS = 5000
@@ -44,8 +46,11 @@ export default function App() {
   const [route, setRoute] = useState<Route | null>(null)
   const [routeLoading, setRouteLoading] = useState(false)
   const currentStep = useCurrentStep(route?.steps, route?.polyline, userPos)
+  const [navigating, setNavigating] = useState(false)
+  const [meme, setMeme] = useState<IncidentType | null>(null)
   const view3D = use3D(map)
-  const navCam = useNavCamera(map, view3D.is3D && !!route, route?.polyline ?? null, userPos)
+  // In navigation mode the camera follows without needing 3D
+  const navCam = useNavCamera(map, navigating || (view3D.is3D && !!route), route?.polyline ?? null, userPos)
   const pinRef = useRef<Marker | null>(null)
   const searchLayerRef = useRef<SearchLayer | null>(null)
   const routeLayerRef = useRef<RouteLayer | null>(null)
@@ -99,8 +104,10 @@ export default function App() {
   const clearRoute = useCallback(() => {
     routeAbort.current?.abort()
     setRoute(null)
+    setNavigating(false)
     setRouteLoading(false)
     routeLayerRef.current?.setRoute(null)
+    routeLayerRef.current?.setDone(null)
     incidentsRef.current?.setOnRoute([])
   }, [])
 
@@ -164,6 +171,7 @@ export default function App() {
       try {
         await reportIncident(type, { lat: at.lat, lng: at.lng })
         setNotice(`${INCIDENT_INFO[type].emoji} ${INCIDENT_INFO[type].label} reported${userPos ? '' : ' at the map centre'}. Thanks!`)
+        setMeme(type)
         refreshIncidents()
       } catch (err) {
         setNotice((err as Error).message)
@@ -275,6 +283,49 @@ export default function App() {
     [map, userPos],
   )
 
+  // ── Navigation mode: live progress, rerouting when off the line, arrival ──
+  const reroute = useCallback(
+    async (from: { lat: number; lng: number }) => {
+      if (!selectedPlace) return
+      try {
+        const r = await fetchRoute(from, { lat: selectedPlace.lat, lng: selectedPlace.lng })
+        setRoute(r)
+        routeLayerRef.current?.setRoute(r.polyline)
+        incidentsRef.current?.setOnRoute(r.incidentsOnRoute ?? [])
+        setNotice('Rerouting from your position.')
+      } catch (err) {
+        setNotice((err as Error).message)
+      }
+    },
+    [selectedPlace],
+  )
+  const arrive = useCallback(() => {
+    clearRoute()
+    setNotice("You've arrived.")
+  }, [clearRoute])
+  const nav = useNavProgress(route, userPos, currentStep, navigating, reroute, arrive)
+
+  // Grey out the part already driven; show the whole route again when not navigating
+  useEffect(() => {
+    if (!route) return
+    if (navigating && nav.split) {
+      routeLayerRef.current?.setDone(nav.split.done)
+      routeLayerRef.current?.setRoute(nav.split.todo)
+    } else {
+      routeLayerRef.current?.setDone(null)
+      routeLayerRef.current?.setRoute(route.polyline)
+    }
+  }, [route, navigating, nav.split])
+
+  const startNavigation = useCallback(() => {
+    setCardOpen(false)
+    setNavigating(true)
+  }, [])
+  const exitNavigation = useCallback(() => {
+    setNavigating(false)
+    setCardOpen(true)
+  }, [])
+
   const clearPlace = useCallback(() => {
     clearRoute()
     setSelectedPlace(null)
@@ -324,7 +375,7 @@ export default function App() {
       )}
       </div>
 
-      <SearchBox
+      {!navigating && <SearchBox
         getBias={getBias}
         onSelect={place => {
           // transit: a search result that is a rail station opens the station card instead
@@ -335,9 +386,9 @@ export default function App() {
         onResults={showResults}
         onActive={highlight}
         picked={selectedPlace}
-      />
+      />}
 
-      {selectedPlace && cardOpen && (
+      {!navigating && selectedPlace && cardOpen && (
         <PlaceCard
           place={selectedPlace}
           userPos={userPos}
@@ -347,13 +398,46 @@ export default function App() {
           route={route}
           routeLoading={routeLoading}
           onClearRoute={clearRoute}
+          onStart={startNavigation}
           currentStep={currentStep}
         />
       )}
 
       {transit.card /* transit */}
 
-      {apiOnline && (
+      {!navigating && (
+        <div className="brand-chip" aria-label="enam">
+          <span className="brand-chip__mark" aria-hidden="true">6</span>enam
+        </div>
+      )}
+
+      {meme && (
+        <div className="meme">
+          <video
+            src={`/media/${meme}.mp4`}
+            muted
+            playsInline
+            autoPlay
+            aria-label={`${INCIDENT_INFO[meme].label} meme`}
+            onEnded={() => setMeme(null)}
+            onError={() => setMeme(null)}
+          />
+        </div>
+      )}
+
+      {navigating && route && (
+        <>
+          <NavBanner
+            step={route.steps?.[currentStep]}
+            next={route.steps?.[currentStep + 1]}
+            nextGapM={route.steps?.[currentStep] ? route.steps[currentStep].distanceM : null}
+            toManeuver={nav.toManeuver}
+          />
+          <NavBar remainingS={nav.remainingS} remainingM={nav.remainingM} arriveAt={nav.arriveAt} onExit={exitNavigation} />
+        </>
+      )}
+
+      {apiOnline && !navigating && (
         <ReportButton onReport={report} hidden={!!selectedPlace && cardOpen} />
       )}
 
