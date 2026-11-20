@@ -127,7 +127,7 @@ function toPlace(f: PhotonFeature, near: { lng: number; lat: number }): Place {
   }
 }
 
-function haversineM(lat1: number, lng1: number, lat2: number, lng2: number): number {
+export function haversineM(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6_371_000
   const toRad = (d: number) => (d * Math.PI) / 180
   const dLat = toRad(lat2 - lat1)

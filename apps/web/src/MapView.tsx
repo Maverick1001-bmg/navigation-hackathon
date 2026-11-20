@@ -25,15 +25,17 @@ type Props = {
   theme: MapTheme
   onMapReady?: (map: MapLibreMap) => void
   onLocationError?: (message: string) => void
+  /** Called on every GPS fix. */
+  onUserLocation?: (pos: { lng: number; lat: number }) => void
 }
 
-export default function MapView({ theme, onMapReady, onLocationError }: Props) {
+export default function MapView({ theme, onMapReady, onLocationError, onUserLocation }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const themeRef = useRef(theme)
   themeRef.current = theme
-  const callbacks = useRef({ onMapReady, onLocationError })
-  callbacks.current = { onMapReady, onLocationError }
+  const callbacks = useRef({ onMapReady, onLocationError, onUserLocation })
+  callbacks.current = { onMapReady, onLocationError, onUserLocation }
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -57,6 +59,9 @@ export default function MapView({ theme, onMapReady, onLocationError }: Props) {
       fitBoundsOptions: { maxZoom: 15 },
     })
     map.addControl(geolocate, 'top-right')
+    geolocate.on('geolocate', (e: { coords: GeolocationCoordinates }) => {
+      callbacks.current.onUserLocation?.({ lng: e.coords.longitude, lat: e.coords.latitude })
+    })
     geolocate.on('error', (e: { code?: number }) => {
       callbacks.current.onLocationError?.(
         e.code === 1

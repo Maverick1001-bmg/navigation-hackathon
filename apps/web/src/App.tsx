@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { LngLatBounds, Marker, type Map as MapLibreMap } from 'maplibre-gl'
 import MapView from './MapView'
 import SearchBox from './SearchBox'
+import PlaceCard from './PlaceCard'
 import { addSearchLayer, type SearchLayer } from './searchLayer'
 import type { MapTheme } from './mapTheme'
 import type { Place } from './photon'
@@ -24,6 +25,8 @@ export default function App() {
   const [map, setMap] = useState<MapLibreMap | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null) // routing destination
+  const [cardOpen, setCardOpen] = useState(false)
+  const [userPos, setUserPos] = useState<{ lng: number; lat: number } | null>(null)
   const pinRef = useRef<Marker | null>(null)
   const searchLayerRef = useRef<SearchLayer | null>(null)
 
@@ -39,12 +42,21 @@ export default function App() {
   const showPlace = useCallback(
     (place: Place) => {
       setSelectedPlace(place)
+      setCardOpen(true)
       if (!map) return
       searchLayerRef.current?.setResults([])
       pinRef.current?.remove()
-      pinRef.current = new Marker({ color: PLACE_PIN_COLOUR })
+      const pin = new Marker({ color: PLACE_PIN_COLOUR })
         .setLngLat([place.lng, place.lat])
         .addTo(map)
+      // Clicking the pin reopens the card after it's been closed
+      const el = pin.getElement()
+      el.style.cursor = 'pointer'
+      el.addEventListener('click', e => {
+        e.stopPropagation()
+        setCardOpen(true)
+      })
+      pinRef.current = pin
       if (place.bbox) {
         const [w, s, e, n] = place.bbox
         map.fitBounds([[w, s], [e, n]], { padding: 80, maxZoom: 17 })
@@ -84,8 +96,14 @@ export default function App() {
     searchLayerRef.current?.setActive(place?.id ?? null)
   }, [])
 
+  // Routing plugs in here: start = userPos (GPS) or map centre, destination = place.
+  const startDirections = useCallback((place: Place) => {
+    setNotice(`Directions to ${place.name} are coming next: routing isn't connected yet.`)
+  }, [])
+
   const clearPlace = useCallback(() => {
     setSelectedPlace(null)
+    setCardOpen(false)
     searchLayerRef.current?.setResults([])
     pinRef.current?.remove()
     pinRef.current = null
@@ -93,7 +111,12 @@ export default function App() {
 
   return (
     <div className={`app app--${theme}`}>
-      <MapView theme={theme} onMapReady={setMap} onLocationError={setNotice} />
+      <MapView
+        theme={theme}
+        onMapReady={setMap}
+        onLocationError={setNotice}
+        onUserLocation={setUserPos}
+      />
 
       <SearchBox
         getBias={getBias}
@@ -103,6 +126,16 @@ export default function App() {
         onActive={highlight}
         picked={selectedPlace}
       />
+
+      {selectedPlace && cardOpen && (
+        <PlaceCard
+          place={selectedPlace}
+          userPos={userPos}
+          onClose={() => setCardOpen(false)}
+          onDirections={startDirections}
+          onShared={setNotice}
+        />
+      )}
 
       <button
         className="theme-toggle"
