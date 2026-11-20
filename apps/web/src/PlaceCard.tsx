@@ -1,4 +1,5 @@
 import { formatDistance, haversineM, type Place } from './photon'
+import { formatDuration, type Route } from './api'
 
 type Props = {
   place: Place
@@ -7,11 +8,17 @@ type Props = {
   onClose: () => void
   onDirections: (place: Place) => void
   onShared: (message: string) => void
+  route: Route | null
+  routeLoading: boolean
+  onClearRoute: () => void
 }
 
-export default function PlaceCard({ place, userPos, onClose, onDirections, onShared }: Props) {
+export default function PlaceCard({
+  place, userPos, onClose, onDirections, onShared, route, routeLoading, onClearRoute,
+}: Props) {
   const distance = userPos ? formatDistance(haversineM(userPos.lat, userPos.lng, place.lat, place.lng)) : null
   const meta = [place.category, distance && `${distance} away`].filter(Boolean).join(' · ')
+  const incidents = route?.incidentsOnRoute?.length ?? 0
 
   const share = async () => {
     const url = `https://www.openstreetmap.org/?mlat=${place.lat.toFixed(6)}&mlon=${place.lng.toFixed(6)}#map=18/${place.lat.toFixed(6)}/${place.lng.toFixed(6)}`
@@ -34,10 +41,33 @@ export default function PlaceCard({ place, userPos, onClose, onDirections, onSha
       <h2 className="place-card__name">{place.name}</h2>
       {meta && <p className="place-card__meta">{meta}</p>}
       {place.detail && <p className="place-card__address">{place.detail}</p>}
+
+      {route && (
+        <div className="place-card__route" role="status">
+          <span className="place-card__eta">{formatDuration(route.durationS)}</span>
+          <span className="place-card__routedist">{formatDistance(route.distanceM)}</span>
+          {incidents > 0 && (
+            <span className="place-card__warn">
+              ⚠ {incidents} incident{incidents > 1 ? 's' : ''} on route
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="place-card__actions">
-        <button className="place-card__btn place-card__btn--primary" onClick={() => onDirections(place)}>
-          Directions
-        </button>
+        {route ? (
+          <button className="place-card__btn" onClick={onClearRoute}>
+            End route
+          </button>
+        ) : (
+          <button
+            className="place-card__btn place-card__btn--primary"
+            onClick={() => onDirections(place)}
+            disabled={routeLoading}
+          >
+            {routeLoading ? 'Finding route…' : 'Directions'}
+          </button>
+        )}
         <button className="place-card__btn" onClick={share}>
           Share
         </button>

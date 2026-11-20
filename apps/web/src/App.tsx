@@ -4,6 +4,8 @@ import MapView from './MapView'
 import SearchBox from './SearchBox'
 import PlaceCard from './PlaceCard'
 import { addSearchLayer, type SearchLayer } from './searchLayer'
+import { addRouteLayer, type RouteLayer } from './routeLayer'
+import { fetchRoute, type Route } from './api'
 import type { MapTheme } from './mapTheme'
 import type { Place } from './photon'
 
@@ -27,8 +29,19 @@ export default function App() {
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null) // routing destination
   const [cardOpen, setCardOpen] = useState(false)
   const [userPos, setUserPos] = useState<{ lng: number; lat: number } | null>(null)
+  const [route, setRoute] = useState<Route | null>(null)
+  const [routeLoading, setRouteLoading] = useState(false)
   const pinRef = useRef<Marker | null>(null)
   const searchLayerRef = useRef<SearchLayer | null>(null)
+  const routeLayerRef = useRef<RouteLayer | null>(null)
+  const routeAbort = useRef<AbortController | null>(null)
+
+  const clearRoute = useCallback(() => {
+    routeAbort.current?.abort()
+    setRoute(null)
+    setRouteLoading(false)
+    routeLayerRef.current?.setRoute(null)
+  }, [])
 
   // Auto-hide notices
   useEffect(() => {
@@ -41,6 +54,7 @@ export default function App() {
 
   const showPlace = useCallback(
     (place: Place) => {
+      clearRoute()
       setSelectedPlace(place)
       setCardOpen(true)
       if (!map) return
@@ -64,20 +78,24 @@ export default function App() {
         map.flyTo({ center: [place.lng, place.lat], zoom: 16 })
       }
     },
-    [map],
+    [map, clearRoute],
   )
 
-  // Result dots layer: created once the map has loaded; clicking a dot picks that place
+  // App layers, created once the map has loaded. Route first so result dots draw on top.
+  // Clicking a result dot picks that place.
   const showPlaceRef = useRef(showPlace)
   showPlaceRef.current = showPlace
   useEffect(() => {
     if (!map) return
-    const layer = addSearchLayer(map, place => showPlaceRef.current(place))
-    searchLayerRef.current = layer
+    const routeLayer = addRouteLayer(map)
+    const searchLayer = addSearchLayer(map, place => showPlaceRef.current(place))
+    routeLayerRef.current = routeLayer
+    searchLayerRef.current = searchLayer
     return () => {
+      routeLayerRef.current = null
       searchLayerRef.current = null
       // The map may already be destroyed (MapView unmount); nothing to clean then
-      try { layer.remove() } catch { /* map gone */ }
+      try { searchLayer.remove(); routeLayer.remove() } catch { /* map gone */ }
     }
   }, [map])
 
@@ -96,18 +114,40 @@ export default function App() {
     searchLayerRef.current?.setActive(place?.id ?? null)
   }, [])
 
-  // Routing plugs in here: start = userPos (GPS) or map centre, destination = place.
-  const startDirections = useCallback((place: Place) => {
-    setNotice(`Directions to ${place.name} are coming next: routing isn't connected yet.`)
-  }, [])
+  // Directions: from GPS position (or map centre if GPS is off) to the selected place.
+  const startDirections = useCallback(
+    async (place: Place) => {
+      if (!map) return
+      routeAbort.current?.abort()
+      const ctrl = new AbortController()
+      routeAbort.current = ctrl
+      const from = userPos ?? map.getCenter()
+      if (!userPos) setNotice('No GPS fix: routing from the map centre.')
+      setRouteLoading(true)
+      try {
+        const r = await fetchRoute({ lat: from.lat, lng: from.lng }, { lat: place.lat, lng: place.lng }, ctrl.signal)
+        setRoute(r)
+        routeLayerRef.current?.setRoute(r.polyline)
+        const bounds = new LngLatBounds()
+        for (const p of r.polyline) bounds.extend([p.lng, p.lat])
+        map.fitBounds(bounds, { padding: fitPadding(), maxZoom: 16, duration: 800 })
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') setNotice((err as Error).message)
+      } finally {
+        if (routeAbort.current === ctrl) setRouteLoading(false)
+      }
+    },
+    [map, userPos],
+  )
 
   const clearPlace = useCallback(() => {
+    clearRoute()
     setSelectedPlace(null)
     setCardOpen(false)
     searchLayerRef.current?.setResults([])
     pinRef.current?.remove()
     pinRef.current = null
-  }, [])
+  }, [clearRoute])
 
   return (
     <div className={`app app--${theme}`}>
@@ -134,6 +174,9 @@ export default function App() {
           onClose={() => setCardOpen(false)}
           onDirections={startDirections}
           onShared={setNotice}
+          route={route}
+          routeLoading={routeLoading}
+          onClearRoute={clearRoute}
         />
       )}
 

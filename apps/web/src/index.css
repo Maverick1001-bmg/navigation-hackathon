@@ -255,6 +255,36 @@ body {
   color: var(--panel-muted);
 }
 
+.place-card__route {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 0 0 14px;
+}
+.place-card__eta {
+  font-size: 22px;
+  font-weight: 700;
+  color: #2b7bff; /* route blue */
+}
+.app--dark .place-card__eta {
+  color: #5b9bff;
+}
+.place-card__routedist {
+  font-size: 15px;
+  color: var(--panel-muted);
+}
+.place-card__warn {
+  flex-basis: 100%;
+  font-size: 14px;
+  font-weight: 500;
+  color: #e5484d; /* incidents red */
+}
+.place-card__btn:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
 .place-card__actions {
   display: flex;
   gap: 8px;
