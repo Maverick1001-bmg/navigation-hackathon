@@ -19,6 +19,8 @@ type TransitSelection =
 type Options = {
   /** Called when a transit card opens from nothing (App hides the place card). */
   onOpen: () => void
+  /** A station dot was tapped with no transit card open: App shows the place card first. */
+  onStationPlace: (place: Place) => void
   fitPadding: () => PaddingOptions
 }
 
@@ -76,6 +78,14 @@ export function useTransit(map: MapLibreMap | null, opts: Options) {
           return
         }
       }
+      if (sel.kind === 'none') {
+        // Place card (with Directions) first; its "Public transport" button opens the station card
+        const place = placeForStation(stationId)
+        if (place) {
+          optsRef.current.onStationPlace(place)
+          return
+        }
+      }
       openStation(stationId)
     },
     [openStation, setSelection],
@@ -112,15 +122,8 @@ export function useTransit(map: MapLibreMap | null, opts: Options) {
 
   const close = useCallback(() => setSelection({ kind: 'none' }), [setSelection])
 
-  const openStationForPlace = useCallback(
-    (place: Place) => {
-      const station = stationForPlace(data, place)
-      if (!station) return false
-      openStation(station.id)
-      return true
-    },
-    [openStation],
-  )
+  /** Id of the rail station a place refers to, if any. */
+  const stationIdForPlace = useCallback((place: Place) => stationForPlace(data, place)?.id ?? null, [])
 
   let card: ReactNode = null
   if (selection.kind === 'station') {
@@ -130,6 +133,10 @@ export function useTransit(map: MapLibreMap | null, opts: Options) {
         stationId={selection.stationId}
         now={now}
         onPickLine={lineId => openLine(lineId, selection.stationId)}
+        onShowPlace={() => {
+          const place = placeForStation(selection.stationId)
+          if (place) opts.onStationPlace(place)
+        }}
         onClose={close}
       />
     )
@@ -149,7 +156,23 @@ export function useTransit(map: MapLibreMap | null, opts: Options) {
     )
   }
 
-  return { card, openStationForPlace, close }
+  return { card, stationIdForPlace, openStation, close }
+}
+
+/** A station as a place, so it gets the normal place card (with Directions). */
+function placeForStation(stationId: string): Place | null {
+  const s = data.stations.find(x => x.id === stationId)
+  if (!s) return null
+  const lines = data.lines.filter(l => s.lineIds.includes(l.id)).map(l => l.shortName)
+  return {
+    id: `station-${s.id}`,
+    name: s.name,
+    detail: lines.join(' · '),
+    category: 'Station',
+    lng: s.lng,
+    lat: s.lat,
+    distanceM: 0,
+  }
 }
 
 /** On phones the line card is a bottom sheet (max 55vh): keep the line above it. */

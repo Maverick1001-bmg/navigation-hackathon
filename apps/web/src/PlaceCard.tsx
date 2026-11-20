@@ -13,12 +13,14 @@ type Props = {
   routeLoading: boolean
   onClearRoute: () => void
   onStart: () => void
+  /** Set when this place is a rail station: opens the public transport card. */
+  onTransit?: () => void
   /** Index of the upcoming turn-by-turn step. */
   currentStep: number
 }
 
 export default function PlaceCard({
-  place, userPos, onClose, onDirections, onShared, route, routeLoading, onClearRoute, onStart, currentStep,
+  place, userPos, onClose, onDirections, onShared, route, routeLoading, onClearRoute, onStart, onTransit, currentStep,
 }: Props) {
   const distance = userPos ? formatDistance(haversineM(userPos.lat, userPos.lng, place.lat, place.lng)) : null
   const meta = [place.category, distance && `${distance} away`].filter(Boolean).join(' · ')
@@ -79,6 +81,11 @@ export default function PlaceCard({
             disabled={routeLoading}
           >
             {routeLoading ? 'Finding route…' : 'Directions'}
+          </button>
+        )}
+        {onTransit && (
+          <button className="place-card__btn" onClick={onTransit}>
+            🚇 Public transport
           </button>
         )}
         <button className="place-card__btn" onClick={share}>

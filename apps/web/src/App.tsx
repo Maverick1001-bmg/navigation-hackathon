@@ -189,8 +189,13 @@ export default function App() {
 
   const getBias = useCallback(() => map?.getCenter() ?? KL, [map])
 
-  const transit = useTransit(map, { onOpen: () => setCardOpen(false), fitPadding }) // transit
+  const transit = useTransit(map, {
+    onOpen: () => setCardOpen(false),
+    onStationPlace: place => showPlaceRef.current(place),
+    fitPadding,
+  }) // transit
   const closeTransit = transit.close // transit
+  const stationId = selectedPlace ? transit.stationIdForPlace(selectedPlace) : null
 
   const showPlace = useCallback(
     (place: Place) => {
@@ -378,9 +383,7 @@ export default function App() {
       {!navigating && <SearchBox
         getBias={getBias}
         onSelect={place => {
-          // transit: a search result that is a rail station opens the station card instead
-          if (transit.openStationForPlace(place)) { searchLayerRef.current?.setResults([]); return }
-          showPlace(place)
+          showPlace(place) // a rail station gets a "Public transport" button on its place card
         }}
         onClear={clearPlace}
         onResults={showResults}
@@ -399,6 +402,7 @@ export default function App() {
           routeLoading={routeLoading}
           onClearRoute={clearRoute}
           onStart={startNavigation}
+          onTransit={stationId ? () => transit.openStation(stationId) : undefined}
           currentStep={currentStep}
         />
       )}
