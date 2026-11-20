@@ -66,6 +66,10 @@ export const server = http.createServer(async (req, res) => {
       return send(200, incidents.list(bbox));
     }
 
+    if (path.startsWith("/api/incidents") && req.method === "POST" && !incidents.enabled()) {
+      return send(403, { error: "incident reports are disabled" });
+    }
+
     if (path === "/api/incidents" && req.method === "POST") {
       const body = await readJson(req);
       const err = incidents.validate(body);

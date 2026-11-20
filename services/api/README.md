@@ -15,3 +15,6 @@ First start imports the data (~2 min for Malaysia); later starts are fast.
 ## Valhalla (:8002) — needs Docker
     docker compose -f engines/valhalla/docker-compose.yml up -d
 First start builds tiles (~15 min for Malaysia, ~3 GB RAM); later starts are fast.
+
+## Switches
+`ROUTING_PROVIDER=graphhopper|valhalla`, `INCIDENTS=off` (disable incident reports: GET returns [], POST returns 403).
