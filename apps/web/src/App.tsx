@@ -5,7 +5,14 @@ import SearchBox from './SearchBox'
 import PlaceCard from './PlaceCard'
 import { addSearchLayer, type SearchLayer } from './searchLayer'
 import { addRouteLayer, type RouteLayer } from './routeLayer'
-import { fetchRoute, type Route } from './api'
+import {
+  API_BASE, checkHealth, confirmIncident, fetchRoute, listIncidents, reportIncident,
+  type IncidentType, type Route,
+} from './api'
+import { createIncidentMarkers, INCIDENT_INFO, type IncidentMarkers } from './incidents'
+import ReportButton from './ReportButton'
+
+const INCIDENT_POLL_MS = 5000
 import type { MapTheme } from './mapTheme'
 import type { Place } from './photon'
 
@@ -35,13 +42,107 @@ export default function App() {
   const searchLayerRef = useRef<SearchLayer | null>(null)
   const routeLayerRef = useRef<RouteLayer | null>(null)
   const routeAbort = useRef<AbortController | null>(null)
+  const incidentsRef = useRef<IncidentMarkers | null>(null)
+  const [apiOnline, setApiOnline] = useState(false)
+
+  // ── Location: GPS, or a position the user taps on the map when GPS is unavailable ──
+  const [gpsProblem, setGpsProblem] = useState<string | null>(null)
+  const [gpsRetry, setGpsRetry] = useState(0)
+  const [pickingLocation, setPickingLocation] = useState(false)
+  const manualPinRef = useRef<Marker | null>(null)
+
+  const onGpsFix = useCallback((pos: { lng: number; lat: number }) => {
+    setUserPos(pos)
+    setGpsProblem(null)
+    setPickingLocation(false)
+    manualPinRef.current?.remove()
+    manualPinRef.current = null
+  }, [])
+
+  const retryGps = useCallback(() => {
+    setGpsProblem(null)
+    setGpsRetry(n => n + 1)
+  }, [])
+
+  useEffect(() => {
+    if (!map || !pickingLocation) return
+    const canvas = map.getCanvas()
+    canvas.style.cursor = 'crosshair'
+    const onClick = (e: { lngLat: { lng: number; lat: number } }) => {
+      const pos = { lng: e.lngLat.lng, lat: e.lngLat.lat }
+      manualPinRef.current?.remove()
+      const el = document.createElement('div')
+      el.className = 'manual-location'
+      manualPinRef.current = new Marker({ element: el }).setLngLat([pos.lng, pos.lat]).addTo(map)
+      setUserPos(pos)
+      setGpsProblem(null)
+      setPickingLocation(false)
+      setNotice('Location set. Directions and reports will start here.')
+    }
+    map.once('click', onClick)
+    return () => {
+      map.off('click', onClick)
+      canvas.style.cursor = ''
+    }
+  }, [map, pickingLocation])
 
   const clearRoute = useCallback(() => {
     routeAbort.current?.abort()
     setRoute(null)
     setRouteLoading(false)
     routeLayerRef.current?.setRoute(null)
+    incidentsRef.current?.setOnRoute([])
   }, [])
+
+  // ── Incidents: check the API once, then poll so every phone sees new reports ──
+  const refreshIncidents = useCallback(async () => {
+    try {
+      incidentsRef.current?.set(await listIncidents())
+    } catch { /* keep showing the last list; next poll retries */ }
+  }, [])
+
+  useEffect(() => {
+    if (!API_BASE) return
+    checkHealth().then(ok => {
+      setApiOnline(ok)
+      if (!ok) setNotice("Can't reach the server: routing and reports are offline.")
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!map || !apiOnline) return
+    const markers = createIncidentMarkers(map, async id => {
+      try {
+        await confirmIncident(id)
+        refreshIncidents()
+      } catch (err) {
+        setNotice((err as Error).message)
+      }
+    })
+    incidentsRef.current = markers
+    refreshIncidents()
+    const timer = setInterval(refreshIncidents, INCIDENT_POLL_MS)
+    return () => {
+      clearInterval(timer)
+      incidentsRef.current = null
+      markers.remove()
+    }
+  }, [map, apiOnline, refreshIncidents])
+
+  const report = useCallback(
+    async (type: IncidentType) => {
+      const at = userPos ?? map?.getCenter()
+      if (!at) return
+      try {
+        await reportIncident(type, { lat: at.lat, lng: at.lng })
+        setNotice(`${INCIDENT_INFO[type].emoji} ${INCIDENT_INFO[type].label} reported${userPos ? '' : ' at the map centre'}. Thanks!`)
+        refreshIncidents()
+      } catch (err) {
+        setNotice((err as Error).message)
+      }
+    },
+    [map, userPos, refreshIncidents],
+  )
 
   // Auto-hide notices
   useEffect(() => {
@@ -128,6 +229,7 @@ export default function App() {
         const r = await fetchRoute({ lat: from.lat, lng: from.lng }, { lat: place.lat, lng: place.lng }, ctrl.signal)
         setRoute(r)
         routeLayerRef.current?.setRoute(r.polyline)
+        incidentsRef.current?.setOnRoute(r.incidentsOnRoute ?? [])
         const bounds = new LngLatBounds()
         for (const p of r.polyline) bounds.extend([p.lng, p.lat])
         map.fitBounds(bounds, { padding: fitPadding(), maxZoom: 16, duration: 800 })
@@ -154,9 +256,36 @@ export default function App() {
       <MapView
         theme={theme}
         onMapReady={setMap}
-        onLocationError={setNotice}
-        onUserLocation={setUserPos}
+        onLocationError={setGpsProblem}
+        onUserLocation={onGpsFix}
+        gpsRetry={gpsRetry}
       />
+
+      {(gpsProblem || pickingLocation) && !(selectedPlace && cardOpen) && (
+        <div className="location-bar" role="status">
+          {pickingLocation ? (
+            <>
+              <span className="location-bar__text">👆 Tap the map where you are</span>
+              <button className="location-bar__btn" onClick={() => setPickingLocation(false)}>Cancel</button>
+            </>
+          ) : (
+            <>
+              <span className="location-bar__text">
+                📍 {gpsProblem} Showing Kuala Lumpur.
+                {gpsProblem?.includes('blocked') && (
+                  <small> Allow location for this site in your browser settings, then Retry.</small>
+                )}
+              </span>
+              <span className="location-bar__actions">
+                <button className="location-bar__btn" onClick={retryGps}>Retry</button>
+                <button className="location-bar__btn location-bar__btn--primary" onClick={() => setPickingLocation(true)}>
+                  Set on map
+                </button>
+              </span>
+            </>
+          )}
+        </div>
+      )}
 
       <SearchBox
         getBias={getBias}
@@ -178,6 +307,10 @@ export default function App() {
           routeLoading={routeLoading}
           onClearRoute={clearRoute}
         />
+      )}
+
+      {apiOnline && (
+        <ReportButton onReport={report} hidden={!!selectedPlace && cardOpen} />
       )}
 
       <button
