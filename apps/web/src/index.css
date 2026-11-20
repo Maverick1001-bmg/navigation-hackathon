@@ -10,6 +10,8 @@ body {
 }
 
 .app {
+  position: fixed;
+  inset: 0;
   --panel-bg: #ffffff;
   --panel-fg: #26463f;
   --map-bg: #e6eeed;
@@ -21,9 +23,11 @@ body {
   --map-bg: #08090e;
 }
 
+/* Sized with width/height (not position) because maplibre-gl.css forces
+   .maplibregl-map { position: relative } and loads after this file. */
 .map {
-  position: absolute;
-  inset: 0;
+  width: 100%;
+  height: 100%;
   background: var(--map-bg);
 }
 
