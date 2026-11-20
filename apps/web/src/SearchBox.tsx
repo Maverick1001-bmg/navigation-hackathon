@@ -6,6 +6,12 @@ type Props = {
   getBias: () => { lng: number; lat: number }
   onSelect: (place: Place) => void
   onClear: () => void
+  /** New results: every place (for map pins) and the ones currently listed (to fit the map). */
+  onResults?: (all: Place[], listed: Place[]) => void
+  /** The highlighted row's place, so its pin can be emphasised. */
+  onActive?: (place: Place | null) => void
+  /** A place picked outside the list (e.g. by clicking its pin): show it in the box. */
+  picked?: Place | null
 }
 
 const MIN_CHARS = 3
@@ -36,7 +42,7 @@ function toRows(entries: SearchEntry[], expanded: Set<string>): Row[] {
   return rows
 }
 
-export default function SearchBox({ getBias, onSelect, onClear }: Props) {
+export default function SearchBox({ getBias, onSelect, onClear, onResults, onActive, picked }: Props) {
   const [query, setQuery] = useState('')
   const [entries, setEntries] = useState<SearchEntry[]>([])
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -49,6 +55,31 @@ export default function SearchBox({ getBias, onSelect, onClear }: Props) {
 
   const rows = useMemo(() => toRows(entries, expanded), [entries, expanded])
   const selectable = useMemo(() => rows.filter(r => r.kind !== 'header'), [rows])
+  const callbacks = useRef({ onResults, onActive })
+  callbacks.current = { onResults, onActive }
+
+  // Tell the map about new results (pins for all, fit to the ones listed)
+  useEffect(() => {
+    const all = entries.flatMap(e => (e.kind === 'place' ? [e.place] : e.places))
+    const listed = toRows(entries, new Set()).flatMap(r => (r.kind === 'place' ? [r.place] : []))
+    callbacks.current.onResults?.(all, listed)
+  }, [entries])
+
+  // Emphasise the highlighted row's pin
+  const activeRow = selectable[active]
+  const activePlace = open && activeRow?.kind === 'place' ? activeRow.place : null
+  useEffect(() => {
+    callbacks.current.onActive?.(activePlace)
+  }, [activePlace])
+
+  // Picked from the map: put its name in the box and close the list
+  useEffect(() => {
+    if (!picked) return
+    skipSearchFor.current = picked.name
+    setQuery(picked.name)
+    setEntries([])
+    setOpen(false)
+  }, [picked])
 
   useEffect(() => {
     const q = query.trim()
@@ -81,6 +112,7 @@ export default function SearchBox({ getBias, onSelect, onClear }: Props) {
   const choose = (place: Place) => {
     skipSearchFor.current = place.name
     setQuery(place.name)
+    setEntries([])
     setOpen(false)
     onSelect(place)
   }
