@@ -1,0 +1,13 @@
+# Valhalla (US-origin exception approved). Builds tiles from the .pbf on first start, then serves on :8002.
+services:
+  valhalla:
+    image: ghcr.io/valhalla/valhalla-scripted:latest
+    ports:
+      - "8002:8002"
+    volumes:
+      - ../../data/valhalla:/custom_files
+    environment:
+      - serve_tiles=True
+      - build_admins=False
+      - build_time_zones=False
+      - use_tiles_ignore_pbf=True

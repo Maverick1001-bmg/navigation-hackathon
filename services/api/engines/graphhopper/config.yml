@@ -1,0 +1,28 @@
+graphhopper:
+  datareader.file: data/malaysia-singapore-brunei.osm.pbf
+  graph.location: data/graphhopper-cache
+  profiles:
+    - name: car
+      custom_model:
+        speed:
+          - if: "true"
+            limit_to: car_average_speed
+        priority:
+          - if: "!car_access"
+            multiply_by: "0"
+  profiles_ch:
+    - profile: car
+  graph.encoded_values: car_access, car_average_speed, road_access
+  prepare.min_network_size: 200
+  routing.snap_preventions_default: tunnel, bridge, ferry
+  import.osm.ignored_highways: footway,construction,cycleway,path,steps
+  graph.dataaccess.default_type: RAM_STORE
+server:
+  application_connectors:
+    - type: http
+      port: 8989
+      bind_host: localhost
+  admin_connectors:
+    - type: http
+      port: 8990
+      bind_host: localhost
