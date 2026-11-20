@@ -8,12 +8,24 @@
 
 export type LatLng = { lat: number; lng: number }
 
+export type RouteStep = {
+  text: string // e.g. "Turn left onto Jalan Ampang"
+  distanceM: number // length of this step
+  durationS: number // time for this step
+  location: LatLng // where the maneuver happens
+}
+
 export type Route = {
   polyline: LatLng[]
   distanceM: number
   durationS: number
   incidentsOnRoute: string[]
+  /** Turn-by-turn, in order. Optional: older API versions don't send it. */
+  steps?: RouteStep[]
 }
+
+/** ?mocksteps in the page link: fake steps from the route shape when the API sends none. */
+const MOCK_STEPS = new URLSearchParams(window.location.search).has('mocksteps')
 
 const STORAGE_KEY = 'apiBase'
 
@@ -57,7 +69,49 @@ export async function fetchRoute(from: LatLng, to: LatLng, signal?: AbortSignal)
   const body = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(body.error ? `Routing failed: ${body.error}` : `Routing failed (${res.status}).`)
   if (!Array.isArray(body.polyline) || body.polyline.length < 2) throw new Error('No route found.')
-  return body as Route
+  const route = body as Route
+  if (!Array.isArray(route.steps)) route.steps = undefined
+  if (MOCK_STEPS && !route.steps?.length) route.steps = mockSteps(route)
+  return route
+}
+
+// Testing aid until the API fills `steps`: a step at every sharp bend in the polyline.
+function mockSteps(route: Route): RouteStep[] {
+  const pts = route.polyline
+  const speed = route.distanceM / Math.max(1, route.durationS)
+  const turns: { at: number; text: string }[] = [{ at: 0, text: 'Head out along the route' }]
+  for (let i = 1; i < pts.length - 1; i++) {
+    let delta = bearing(pts[i], pts[i + 1]) - bearing(pts[i - 1], pts[i])
+    delta = ((delta + 540) % 360) - 180
+    if (Math.abs(delta) < 35 || segM(pts, turns[turns.length - 1].at, i) < 40) continue
+    const side = delta > 0 ? 'right' : 'left'
+    turns.push({ at: i, text: Math.abs(delta) > 120 ? `Sharp ${side}` : `Turn ${side}` })
+  }
+  turns.push({ at: pts.length - 1, text: 'Arrive at your destination' })
+  return turns.map((t, k) => {
+    const next = turns[k + 1]?.at ?? t.at
+    const d = segM(pts, t.at, next)
+    return { text: t.text, distanceM: d, durationS: d / speed, location: pts[t.at] }
+  })
+}
+
+const rad = (d: number) => (d * Math.PI) / 180
+
+/** Compass bearing from a to b, degrees clockwise from north. */
+export function bearing(a: LatLng, b: LatLng): number {
+  const y = Math.sin(rad(b.lng - a.lng)) * Math.cos(rad(b.lat))
+  const x = Math.cos(rad(a.lat)) * Math.sin(rad(b.lat)) - Math.sin(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.cos(rad(b.lng - a.lng))
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360
+}
+
+function segM(pts: LatLng[], from: number, to: number): number {
+  let m = 0
+  for (let i = from; i < to; i++) {
+    const dLat = rad(pts[i + 1].lat - pts[i].lat)
+    const dLng = rad(pts[i + 1].lng - pts[i].lng) * Math.cos(rad(pts[i].lat))
+    m += 6_371_000 * Math.hypot(dLat, dLng)
+  }
+  return m
 }
 
 // ── Server status ──

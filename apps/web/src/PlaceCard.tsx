@@ -1,5 +1,6 @@
 import { formatDistance, haversineM, type Place } from './photon'
 import { formatDuration, type Route } from './api'
+import TurnByTurn from './TurnByTurn'
 
 type Props = {
   place: Place
@@ -11,10 +12,12 @@ type Props = {
   route: Route | null
   routeLoading: boolean
   onClearRoute: () => void
+  /** Index of the upcoming turn-by-turn step. */
+  currentStep: number
 }
 
 export default function PlaceCard({
-  place, userPos, onClose, onDirections, onShared, route, routeLoading, onClearRoute,
+  place, userPos, onClose, onDirections, onShared, route, routeLoading, onClearRoute, currentStep,
 }: Props) {
   const distance = userPos ? formatDistance(haversineM(userPos.lat, userPos.lng, place.lat, place.lng)) : null
   const meta = [place.category, distance && `${distance} away`].filter(Boolean).join(' · ')
@@ -52,6 +55,10 @@ export default function PlaceCard({
             </span>
           )}
         </div>
+      )}
+
+      {route?.steps && route.steps.length > 0 && (
+        <TurnByTurn steps={route.steps} current={currentStep} userPos={userPos} />
       )}
 
       <div className="place-card__actions">
