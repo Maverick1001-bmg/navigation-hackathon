@@ -6,9 +6,7 @@ Things outside `services/api/` that need updating. Branch: `cheryl/routing-adapt
 Add these variable names (no values/secrets):
 
 ```
-ROUTING_PROVIDER=graphhopper   # or: valhalla
-GRAPHHOPPER_URL=http://localhost:8989
-VALHALLA_URL=http://localhost:8002
+
 ```
 
 ## Decisions to note
