@@ -322,6 +322,7 @@ body {
     width: 100%;
     border-radius: 16px 16px 0 0;
     padding-bottom: calc(14px + env(safe-area-inset-bottom));
+    z-index: 3; /* above MapLibre's bottom controls, which otherwise cover the buttons */
   }
 }
 
@@ -638,4 +639,51 @@ body {
 }
 .app--dark .maplibregl-ctrl-attrib a {
   color: #ccd;
+}
+
+
+/* ───── Turn-by-turn list (inside the place card) ───── */
+.steps {
+  max-height: 210px;
+  margin: 0 0 14px;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  border-top: 1px solid var(--panel-border);
+  overscroll-behavior: contain;
+}
+.steps__item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 9px 8px;
+  border-bottom: 1px solid var(--panel-border);
+  font-size: 14px;
+  line-height: 1.35;
+}
+.steps__text {
+  flex: 1;
+}
+.steps__dist {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--panel-muted);
+}
+.steps__item.is-done {
+  opacity: 0.45;
+}
+.steps__item.is-current {
+  border-radius: 10px;
+  background: #2b7bff; /* route blue */
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+}
+.steps__item.is-current .steps__dist {
+  color: rgba(255, 255, 255, 0.85);
+}
+@media (max-width: 699px) {
+  .steps {
+    max-height: 30vh;
+  }
 }

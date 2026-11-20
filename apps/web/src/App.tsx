@@ -12,6 +12,7 @@ import {
 import ServerStatusChip from './ServerStatusChip'
 import { createIncidentMarkers, INCIDENT_INFO, type IncidentMarkers } from './incidents'
 import ReportButton from './ReportButton'
+import { useCurrentStep } from './currentStep'
 
 const INCIDENT_POLL_MS = 5000
 const SERVER_CHECK_MS = 20_000
@@ -40,6 +41,7 @@ export default function App() {
   const [userPos, setUserPos] = useState<{ lng: number; lat: number } | null>(null)
   const [route, setRoute] = useState<Route | null>(null)
   const [routeLoading, setRouteLoading] = useState(false)
+  const currentStep = useCurrentStep(route?.steps, userPos)
   const pinRef = useRef<Marker | null>(null)
   const searchLayerRef = useRef<SearchLayer | null>(null)
   const routeLayerRef = useRef<RouteLayer | null>(null)
@@ -332,6 +334,7 @@ export default function App() {
           route={route}
           routeLoading={routeLoading}
           onClearRoute={clearRoute}
+          currentStep={currentStep}
         />
       )}
 
