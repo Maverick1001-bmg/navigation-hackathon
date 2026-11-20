@@ -4,8 +4,13 @@ import {
   NavigationControl,
   GeolocateControl,
   ScaleControl,
+  setWorkerUrl,
 } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+// MapLibre 6 loads its worker from a separate file next to its own script. Once bundled,
+// that file is missing, so ship it as a Vite asset and point MapLibre at it.
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
+setWorkerUrl(maplibreWorkerUrl)
 import { applyMapTheme, setupNavLayers, type MapTheme } from './mapTheme'
 
 // Free OpenStreetMap vector tiles, no API key. Recoloured light/dark by mapTheme.ts.
