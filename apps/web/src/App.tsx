@@ -47,6 +47,7 @@ export default function App() {
   const [routeLoading, setRouteLoading] = useState(false)
   const currentStep = useCurrentStep(route?.steps, route?.polyline, userPos)
   const [navigating, setNavigating] = useState(false)
+  const [meme, setMeme] = useState<IncidentType | null>(null)
   const view3D = use3D(map)
   // In navigation mode the camera follows without needing 3D
   const navCam = useNavCamera(map, navigating || (view3D.is3D && !!route), route?.polyline ?? null, userPos)
@@ -170,6 +171,7 @@ export default function App() {
       try {
         await reportIncident(type, { lat: at.lat, lng: at.lng })
         setNotice(`${INCIDENT_INFO[type].emoji} ${INCIDENT_INFO[type].label} reported${userPos ? '' : ' at the map centre'}. Thanks!`)
+        setMeme(type)
         refreshIncidents()
       } catch (err) {
         setNotice((err as Error).message)
@@ -402,6 +404,26 @@ export default function App() {
       )}
 
       {transit.card /* transit */}
+
+      {!navigating && (
+        <div className="brand-chip" aria-label="enam">
+          <span className="brand-chip__mark" aria-hidden="true">6</span>enam
+        </div>
+      )}
+
+      {meme && (
+        <div className="meme">
+          <video
+            src={`/media/${meme}.mp4`}
+            muted
+            playsInline
+            autoPlay
+            aria-label={`${INCIDENT_INFO[meme].label} meme`}
+            onEnded={() => setMeme(null)}
+            onError={() => setMeme(null)}
+          />
+        </div>
+      )}
 
       {navigating && route && (
         <>
