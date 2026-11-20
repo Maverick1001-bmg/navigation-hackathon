@@ -60,18 +60,45 @@ export async function fetchRoute(from: LatLng, to: LatLng, signal?: AbortSignal)
   return body as Route
 }
 
-// ── Health ──
-export async function checkHealth(): Promise<boolean> {
-  if (apiProblem()) return false
+// ── Server status ──
+// 'none'         no server address (opened without ?api=, nothing remembered)
+// 'offline'      API unreachable (tunnel down, Codespace stopped, wrong URL)
+// 'routing-down' API up but the routing engine (GraphHopper/Valhalla) isn't answering
+// 'online'       both fine
+export type ServerState = 'checking' | 'none' | 'offline' | 'routing-down' | 'online'
+export type ServerStatus = { state: ServerState; engine?: string }
+
+async function getJson(url: string, ms: number): Promise<{ ok: boolean; body: Record<string, unknown> }> {
   const ctrl = new AbortController()
-  const t = setTimeout(() => ctrl.abort(), 6000)
+  const t = setTimeout(() => ctrl.abort(), ms)
   try {
-    const res = await fetch(`${API_BASE}/api/health`, { signal: ctrl.signal })
-    return res.ok
-  } catch {
-    return false
+    const res = await fetch(url, { signal: ctrl.signal, cache: 'no-store' })
+    const body = await res.json().catch(() => ({}))
+    return { ok: res.ok, body }
   } finally {
     clearTimeout(t)
+  }
+}
+
+// A short route in central KL, to prove the routing engine itself answers
+const PROBE = 'from=3.1390,101.6869&to=3.1450,101.6950'
+
+export async function checkServer(): Promise<ServerStatus> {
+  if (apiProblem()) return { state: 'none' }
+  let engine: string | undefined
+  try {
+    const health = await getJson(`${API_BASE}/api/health`, 6000)
+    // A dead tunnel often answers with an error page: require the real health reply
+    if (!health.ok || health.body.ok !== true) return { state: 'offline' }
+    engine = typeof health.body.routing === 'string' ? health.body.routing : undefined
+  } catch {
+    return { state: 'offline' }
+  }
+  try {
+    const probe = await getJson(`${API_BASE}/api/route?${PROBE}`, 10000)
+    return { state: probe.ok && Array.isArray(probe.body.polyline) ? 'online' : 'routing-down', engine }
+  } catch {
+    return { state: 'routing-down', engine }
   }
 }
 

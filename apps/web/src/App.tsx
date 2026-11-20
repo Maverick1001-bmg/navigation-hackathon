@@ -6,13 +6,15 @@ import PlaceCard from './PlaceCard'
 import { addSearchLayer, type SearchLayer } from './searchLayer'
 import { addRouteLayer, type RouteLayer } from './routeLayer'
 import {
-  API_BASE, checkHealth, confirmIncident, fetchRoute, listIncidents, reportIncident,
-  type IncidentType, type Route,
+  checkServer, confirmIncident, fetchRoute, listIncidents, reportIncident,
+  type IncidentType, type Route, type ServerStatus,
 } from './api'
+import ServerStatusChip from './ServerStatusChip'
 import { createIncidentMarkers, INCIDENT_INFO, type IncidentMarkers } from './incidents'
 import ReportButton from './ReportButton'
 
 const INCIDENT_POLL_MS = 5000
+const SERVER_CHECK_MS = 20_000
 import type { MapTheme } from './mapTheme'
 import type { Place } from './photon'
 
@@ -43,7 +45,9 @@ export default function App() {
   const routeLayerRef = useRef<RouteLayer | null>(null)
   const routeAbort = useRef<AbortController | null>(null)
   const incidentsRef = useRef<IncidentMarkers | null>(null)
-  const [apiOnline, setApiOnline] = useState(false)
+  const [server, setServer] = useState<ServerStatus>({ state: 'checking' })
+  // Reports work whenever the API answers, even if the routing engine is down
+  const apiOnline = server.state === 'online' || server.state === 'routing-down'
 
   // ── Location: GPS, or a position the user taps on the map when GPS is unavailable ──
   const [gpsProblem, setGpsProblem] = useState<string | null>(null)
@@ -94,19 +98,37 @@ export default function App() {
     incidentsRef.current?.setOnRoute([])
   }, [])
 
-  // ── Incidents: check the API once, then poll so every phone sees new reports ──
+  // ── Server status: keep checking, so a dead tunnel or engine shows up in the app ──
+  const checking = useRef(false)
+  const recheckServer = useCallback(async () => {
+    if (checking.current) return
+    checking.current = true
+    try {
+      setServer(await checkServer())
+    } finally {
+      checking.current = false
+    }
+  }, [])
+
+  useEffect(() => {
+    recheckServer()
+    const timer = setInterval(recheckServer, SERVER_CHECK_MS)
+    // Phones pause background tabs: check again as soon as the app is visible
+    const onVisible = () => document.visibilityState === 'visible' && recheckServer()
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('online', recheckServer)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('online', recheckServer)
+    }
+  }, [recheckServer])
+
+  // ── Incidents: poll while the API is up, so every phone sees new reports ──
   const refreshIncidents = useCallback(async () => {
     try {
       incidentsRef.current?.set(await listIncidents())
     } catch { /* keep showing the last list; next poll retries */ }
-  }, [])
-
-  useEffect(() => {
-    if (!API_BASE) return
-    checkHealth().then(ok => {
-      setApiOnline(ok)
-      if (!ok) setNotice("Can't reach the server: routing and reports are offline.")
-    })
   }, [])
 
   useEffect(() => {
@@ -261,6 +283,9 @@ export default function App() {
         gpsRetry={gpsRetry}
       />
 
+      {/* Bottom-left: server status + location problems (hidden behind the card on phones) */}
+      <div className={`status-stack${selectedPlace && cardOpen ? ' status-stack--card-open' : ''}`}>
+      <ServerStatusChip status={server} onRetry={recheckServer} />
       {(gpsProblem || pickingLocation) && !(selectedPlace && cardOpen) && (
         <div className="location-bar" role="status">
           {pickingLocation ? (
@@ -286,6 +311,7 @@ export default function App() {
           )}
         </div>
       )}
+      </div>
 
       <SearchBox
         getBias={getBias}
