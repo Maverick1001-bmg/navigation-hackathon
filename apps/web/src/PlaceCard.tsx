@@ -12,12 +12,13 @@ type Props = {
   route: Route | null
   routeLoading: boolean
   onClearRoute: () => void
+  onStart: () => void
   /** Index of the upcoming turn-by-turn step. */
   currentStep: number
 }
 
 export default function PlaceCard({
-  place, userPos, onClose, onDirections, onShared, route, routeLoading, onClearRoute, currentStep,
+  place, userPos, onClose, onDirections, onShared, route, routeLoading, onClearRoute, onStart, currentStep,
 }: Props) {
   const distance = userPos ? formatDistance(haversineM(userPos.lat, userPos.lng, place.lat, place.lng)) : null
   const meta = [place.category, distance && `${distance} away`].filter(Boolean).join(' · ')
@@ -63,9 +64,14 @@ export default function PlaceCard({
 
       <div className="place-card__actions">
         {route ? (
-          <button className="place-card__btn" onClick={onClearRoute}>
-            End route
-          </button>
+          <>
+            <button className="place-card__btn place-card__btn--primary" onClick={onStart}>
+              Start
+            </button>
+            <button className="place-card__btn" onClick={onClearRoute}>
+              End route
+            </button>
+          </>
         ) : (
           <button
             className="place-card__btn place-card__btn--primary"

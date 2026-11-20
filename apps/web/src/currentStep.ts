@@ -16,13 +16,18 @@ const toXY = (p: LatLng, lat0: number) => ({
   y: ((p.lat * Math.PI) / 180) * 6_371_000,
 })
 
-/** Distance along the route (metres from the start) of the route point nearest to p. */
-function makeProgress(line: LatLng[]) {
+/**
+ * Projects positions onto a route line: how far along it (metres from the start) the nearest
+ * point is, and how far off the line the position is. split() cuts the line at a distance.
+ */
+export function makeProjector(line: LatLng[]) {
   const lat0 = line[0]?.lat ?? 0
   const pts = line.map(p => toXY(p, lat0))
   const cum = [0]
   for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y))
-  return (p: LatLng) => {
+  const total = cum[cum.length - 1] ?? 0
+
+  const project = (p: LatLng) => {
     const q = toXY(p, lat0)
     let best = Infinity
     let along = 0
@@ -38,8 +43,30 @@ function makeProgress(line: LatLng[]) {
         along = cum[i] + t * Math.sqrt(len2)
       }
     }
-    return along
+    return { along, off: best }
   }
+
+  /** The line cut at `along` metres: the part already driven and the part still ahead. */
+  const split = (along: number) => {
+    if (line.length < 2) return { done: [] as LatLng[], todo: line }
+    const a = Math.max(0, Math.min(total, along))
+    let i = 1
+    while (i < line.length - 1 && cum[i] < a) i++
+    const seg = cum[i] - cum[i - 1]
+    const t = seg ? (a - cum[i - 1]) / seg : 0
+    const cut = {
+      lat: line[i - 1].lat + t * (line[i].lat - line[i - 1].lat),
+      lng: line[i - 1].lng + t * (line[i].lng - line[i - 1].lng),
+    }
+    return { done: [...line.slice(0, i), cut], todo: [cut, ...line.slice(i)] }
+  }
+
+  return { total, project, split }
+}
+
+const makeProgress = (line: LatLng[]) => {
+  const { project } = makeProjector(line)
+  return (p: LatLng) => project(p).along
 }
 
 /**

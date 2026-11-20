@@ -730,3 +730,88 @@ body {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
   cursor: pointer;
 }
+
+/* ── Navigation mode ── */
+.nav-banner {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: #1b5e20;
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+.nav-banner__arrow {
+  font-size: 44px;
+  line-height: 1;
+}
+.nav-banner__main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.nav-banner__dist {
+  font-size: 26px;
+  font-weight: 700;
+}
+.nav-banner__text {
+  font-size: 16px;
+}
+.nav-banner__then {
+  margin-top: 4px;
+  font-size: 14px;
+  opacity: 0.85;
+}
+.nav-bar {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 8px;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--panel-bg);
+  color: var(--panel-fg);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+.nav-bar__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.nav-bar__stat strong {
+  font-size: 20px;
+}
+.nav-bar__stat small {
+  color: var(--panel-muted);
+  font-size: 12px;
+}
+.nav-bar__exit {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: #d93025;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+}
+/* keep the re-centre button clear of the banner */
+.app:has(.nav-banner) .recenter-btn {
+  top: auto;
+  bottom: 96px;
+}

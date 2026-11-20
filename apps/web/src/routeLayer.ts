@@ -6,6 +6,8 @@ import type { LatLng } from './api'
 const SOURCE = 'route'
 const CASING = 'route-casing'
 const LINE = 'route-line'
+const DONE_SOURCE = 'route-done'
+const DONE = 'route-done-line'
 export const ROUTE_COLOUR = '#2b7bff' // blue is reserved for the route
 
 export function addRouteLayer(map: MapLibreMap, beforeLayerId?: string) {
@@ -38,13 +40,32 @@ export function addRouteLayer(map: MapLibreMap, beforeLayerId?: string) {
     before,
   )
 
+  // The part already driven, greyed out, on top of the route line
+  map.addSource(DONE_SOURCE, { type: 'geojson', data: line([]) })
+  map.addLayer(
+    {
+      id: DONE,
+      type: 'line',
+      source: DONE_SOURCE,
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: {
+        'line-color': '#9aa1ad',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 10, 4, 16, 9],
+      },
+    },
+    before,
+  )
+
   return {
+    setDone(points: LatLng[] | null) {
+      ;(map.getSource(DONE_SOURCE) as GeoJSONSource | undefined)?.setData(line(points ?? []))
+    },
     setRoute(points: LatLng[] | null) {
       ;(map.getSource(SOURCE) as GeoJSONSource | undefined)?.setData(line(points ?? []))
     },
     remove() {
-      for (const id of [LINE, CASING]) if (map.getLayer(id)) map.removeLayer(id)
-      if (map.getSource(SOURCE)) map.removeSource(SOURCE)
+      for (const id of [DONE, LINE, CASING]) if (map.getLayer(id)) map.removeLayer(id)
+      for (const id of [DONE_SOURCE, SOURCE]) if (map.getSource(id)) map.removeSource(id)
     },
   }
 }
