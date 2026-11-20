@@ -125,13 +125,64 @@ body {
 
 .search__item {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 12px;
   padding: 9px 16px;
   cursor: pointer;
 }
 .search__item.is-active {
   background: var(--panel-hover);
+}
+
+.search__text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.search__dist {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--panel-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Chain group: header + indented branches */
+.search__group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 16px 4px;
+}
+.search__group:not(:first-child) {
+  border-top: 1px solid var(--panel-border);
+  margin-top: 4px;
+}
+.search__item--branch {
+  padding: 7px 16px 7px 32px;
+  border-left: 3px solid transparent;
+}
+.search__item--branch .search__name {
+  font-size: 14px;
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.search__item--branch.is-active {
+  border-left-color: var(--accent);
+}
+.search__more {
+  font-size: 13px;
+  color: var(--accent);
+}
+.search__group + .search__item:not(.search__item--branch),
+.search__item--branch + .search__item:not(.search__item--branch),
+.search__more + .search__item:not(.search__item--branch) {
+  border-top: 1px solid var(--panel-border);
+  margin-top: 4px;
 }
 
 .search__name {
