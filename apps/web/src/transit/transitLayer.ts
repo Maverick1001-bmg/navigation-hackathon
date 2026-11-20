@@ -15,7 +15,11 @@ const DOTS = 'transit-dots' // stations not on the highlighted line (or all, whe
 const LINE_STOPS = 'transit-line-stops'
 const SELECTED = 'transit-selected'
 const LABELS = 'transit-labels'
-const CLICKABLE = [DOTS, LINE_STOPS, SELECTED]
+// Invisible, finger-sized tap targets (the visible dots are only ~7 px across at city zoom)
+const HIT_ALL = 'transit-hit'
+const HIT_LINE = 'transit-hit-line'
+const HIT_RADIUS = 14
+const CLICKABLE = [HIT_ALL, HIT_LINE]
 const SEARCH_DOTS = 'search-results-dots' // searchLayer.ts; a click there wins
 const NEUTRAL_RING = '#6b7280'
 
@@ -96,6 +100,12 @@ export function addTransitLayer(
     },
     paint: { 'text-color': '#1f2328', 'text-halo-color': '#ffffff', 'text-halo-width': 1.6 },
   }, dotsBefore)
+  const hitPaint = { 'circle-radius': HIT_RADIUS, 'circle-opacity': 0 }
+  map.addLayer({ id: HIT_ALL, type: 'circle', source: STATION_SOURCE, minzoom: 12, paint: hitPaint }, dotsBefore)
+  map.addLayer({
+    id: HIT_LINE, type: 'circle', source: STATION_SOURCE, minzoom: 9, maxzoom: 12,
+    filter: ['get', 'onLine'], paint: hitPaint,
+  }, dotsBefore)
 
   const render = () => {
     const line = highlight ? data.lines.find(l => l.id === highlight!.lineId) : undefined
@@ -165,7 +175,7 @@ export function addTransitLayer(
           map.off('mouseenter', layer, onEnter)
           map.off('mouseleave', layer, onLeave)
         }
-        for (const id of [LABELS, SELECTED, LINE_STOPS, DOTS, LINE, LINE_CASING]) {
+        for (const id of [HIT_LINE, HIT_ALL, LABELS, SELECTED, LINE_STOPS, DOTS, LINE, LINE_CASING]) {
           if (map.getLayer(id)) map.removeLayer(id)
         }
         for (const id of [LINE_SOURCE, STATION_SOURCE]) {

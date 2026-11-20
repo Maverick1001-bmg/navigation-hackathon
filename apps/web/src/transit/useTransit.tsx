@@ -58,7 +58,7 @@ export function useTransit(map: MapLibreMap | null, opts: Options) {
       if (map && shape.length) {
         const bounds = new LngLatBounds()
         for (const p of shape) bounds.extend(p)
-        map.fitBounds(bounds, { padding: optsRef.current.fitPadding(), duration: 600 })
+        map.fitBounds(bounds, { padding: linePadding(optsRef.current.fitPadding), duration: 600 })
       }
     },
     [map, setSelection],
@@ -150,6 +150,12 @@ export function useTransit(map: MapLibreMap | null, opts: Options) {
   }
 
   return { card, openStationForPlace, close }
+}
+
+/** On phones the line card is a bottom sheet (max 55vh): keep the line above it. */
+function linePadding(desktop: () => PaddingOptions): PaddingOptions {
+  if (window.innerWidth >= 700) return desktop()
+  return { top: 70, bottom: Math.round(window.innerHeight * 0.55) + 20, left: 30, right: 50 }
 }
 
 function syncLayer(layer: TransitLayer, sel: TransitSelection) {

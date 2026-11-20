@@ -183,6 +183,7 @@
 
 @media (max-width: 699px) {
   .transit-card {
+    z-index: 3; /* above MapLibre's attribution control on the bottom sheet */
     max-height: 55vh;
   }
   .transit-stops {
