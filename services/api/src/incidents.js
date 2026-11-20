@@ -1,5 +1,7 @@
 // In-memory incident store (no DB). Shape per docs/CONTRACTS.md.
 export const TYPES = ["accident", "police", "flood", "roadworks", "jam", "hazard"];
+// INCIDENTS=off disables reports: nothing seeded, GET returns [], POST is rejected.
+export const enabled = () => process.env.INCIDENTS !== "off";
 const MAX_AGE_MS = 2 * 60 * 60 * 1000;
 
 let seq = 0;
@@ -29,6 +31,7 @@ export function confirm(id) {
 
 // Hides reports older than 2 hours (seeded ones are stamped recent, so they stay visible at startup).
 export function list(bbox) {
+  if (!enabled()) return [];
   const cutoff = Date.now() - MAX_AGE_MS;
   return incidents.filter((i) => {
     if (Date.parse(i.reportedAt) < cutoff) return false;
@@ -46,6 +49,7 @@ export function parseBbox(s) {
 
 const mins = (m) => new Date(Date.now() - m * 60000);
 export function seed() {
+  if (!enabled()) return;
   const S = [
     ["jam", 3.1187, 101.6772, "Heavy traffic, Federal Highway near Mid Valley", 12, 4],
     ["jam", 3.1569, 101.7123, "Slow near KLCC, Jalan Ampang", 25, 2],
