@@ -21,17 +21,23 @@ const MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty'
 const START_CENTER: [number, number] = [101.6869, 3.139] // [lng, lat]
 const START_ZOOM = 11
 
+const GPS_WATCHDOG_MS = 12_000 // no fix by then → treat as unavailable
+
 type Props = {
   theme: MapTheme
   onMapReady?: (map: MapLibreMap) => void
+  /** GPS is unavailable (blocked, no signal, timed out, unsupported). */
   onLocationError?: (message: string) => void
   /** Called on every GPS fix. */
   onUserLocation?: (pos: { lng: number; lat: number }) => void
+  /** Change this number to retry GPS. */
+  gpsRetry?: number
 }
 
-export default function MapView({ theme, onMapReady, onLocationError, onUserLocation }: Props) {
+export default function MapView({ theme, onMapReady, onLocationError, onUserLocation, gpsRetry = 0 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
+  const startGpsRef = useRef<(() => void) | null>(null)
   const themeRef = useRef(theme)
   themeRef.current = theme
   const callbacks = useRef({ onMapReady, onLocationError, onUserLocation })
@@ -59,16 +65,38 @@ export default function MapView({ theme, onMapReady, onLocationError, onUserLoca
       fitBoundsOptions: { maxZoom: 15 },
     })
     map.addControl(geolocate, 'top-right')
+
+    // GPS can fail silently: if the site is blocked, MapLibre just disables its button
+    // with no error event, and an unanswered permission prompt never resolves. So we
+    // check the permission ourselves and run a watchdog.
+    let gotFix = false
+    let watchdog: ReturnType<typeof setTimeout> | undefined
+    const fail = (message: string) => {
+      clearTimeout(watchdog)
+      if (!gotFix) callbacks.current.onLocationError?.(message)
+    }
     geolocate.on('geolocate', (e: { coords: GeolocationCoordinates }) => {
+      gotFix = true
+      clearTimeout(watchdog)
       callbacks.current.onUserLocation?.({ lng: e.coords.longitude, lat: e.coords.latitude })
     })
     geolocate.on('error', (e: { code?: number }) => {
-      callbacks.current.onLocationError?.(
-        e.code === 1
-          ? 'Location permission is off. Showing Kuala Lumpur.'
-          : 'Could not get your location. Showing Kuala Lumpur.',
-      )
+      fail(e.code === 1 ? 'Location is blocked for this site.' : "Couldn't get a GPS signal.")
     })
+
+    const startGps = async () => {
+      if (!('geolocation' in navigator)) return fail('This browser has no GPS.')
+      if (!window.isSecureContext) return fail('Location needs https.')
+      try {
+        const perm = await navigator.permissions?.query({ name: 'geolocation' })
+        if (perm?.state === 'denied') return fail('Location is blocked for this site.')
+      } catch { /* Permissions API missing (older Safari): just try */ }
+      gotFix = false
+      clearTimeout(watchdog)
+      watchdog = setTimeout(() => fail("Couldn't get your location."), GPS_WATCHDOG_MS)
+      geolocate.trigger()
+    }
+    startGpsRef.current = startGps
 
     map.addControl(new ScaleControl(), 'bottom-left')
 
@@ -78,15 +106,21 @@ export default function MapView({ theme, onMapReady, onLocationError, onUserLoca
     })
     map.on('load', () => {
       callbacks.current.onMapReady?.(map)
-      if ('geolocation' in navigator) geolocate.trigger()
-      else callbacks.current.onLocationError?.('This browser has no GPS support. Showing Kuala Lumpur.')
+      startGps()
     })
 
     return () => {
+      clearTimeout(watchdog)
+      startGpsRef.current = null
       mapRef.current = null
       map.remove()
     }
   }, [])
+
+  // Retry GPS on request (e.g. the "Retry" button in the location-off bar)
+  useEffect(() => {
+    if (gpsRetry > 0) startGpsRef.current?.()
+  }, [gpsRetry])
 
   // Re-theme in place when the toggle changes
   useEffect(() => {

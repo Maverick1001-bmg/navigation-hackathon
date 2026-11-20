@@ -60,6 +60,68 @@ export async function fetchRoute(from: LatLng, to: LatLng, signal?: AbortSignal)
   return body as Route
 }
 
+// ── Health ──
+export async function checkHealth(): Promise<boolean> {
+  if (apiProblem()) return false
+  const ctrl = new AbortController()
+  const t = setTimeout(() => ctrl.abort(), 6000)
+  try {
+    const res = await fetch(`${API_BASE}/api/health`, { signal: ctrl.signal })
+    return res.ok
+  } catch {
+    return false
+  } finally {
+    clearTimeout(t)
+  }
+}
+
+// ── Incidents ──
+export const INCIDENT_TYPES = ['accident', 'police', 'flood', 'roadworks', 'jam', 'hazard'] as const
+export type IncidentType = (typeof INCIDENT_TYPES)[number]
+
+export type Incident = {
+  id: string
+  type: IncidentType
+  location: LatLng
+  reportedAt: string
+  confirmations: number
+  note?: string
+}
+
+async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const problem = apiProblem()
+  if (problem) throw new Error(problem)
+  let res: Response
+  try {
+    res = await fetch(`${API_BASE}${path}`, init)
+  } catch {
+    throw new Error('Could not reach the server.')
+  }
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(body.error ?? `Request failed (${res.status}).`)
+  return body as T
+}
+
+export const listIncidents = () => apiJson<Incident[]>('/api/incidents')
+
+export const reportIncident = (type: IncidentType, location: LatLng, note?: string) =>
+  apiJson<Incident>('/api/incidents', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(note ? { type, location, note } : { type, location }),
+  })
+
+export const confirmIncident = (id: string) =>
+  apiJson<Incident>(`/api/incidents/${encodeURIComponent(id)}/confirm`, { method: 'POST' })
+
+export function timeAgo(iso: string): string {
+  const min = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000))
+  if (min < 1) return 'just now'
+  if (min < 60) return `${min} min ago`
+  const h = Math.floor(min / 60)
+  return `${h} h ago`
+}
+
 export function formatDuration(s: number): string {
   const min = Math.max(1, Math.round(s / 60))
   if (min < 60) return `${min} min`

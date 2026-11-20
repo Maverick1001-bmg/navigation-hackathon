@@ -325,6 +325,144 @@ body {
   }
 }
 
+/* ───── Incidents ───── */
+.incident-marker {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid #e5484d; /* incidents red */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+.incident-marker--on-route {
+  animation: incident-pulse 1.2s ease-in-out infinite;
+}
+@keyframes incident-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(229, 72, 77, 0.7); }
+  50% { box-shadow: 0 0 0 12px rgba(229, 72, 77, 0); }
+}
+
+.maplibregl-popup-content {
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-family: inherit;
+}
+.app--dark .maplibregl-popup-content {
+  background: var(--panel-bg);
+  color: var(--panel-fg);
+}
+.app--dark .maplibregl-popup-tip {
+  border-top-color: var(--panel-bg) !important;
+  border-bottom-color: var(--panel-bg) !important;
+}
+.app--dark .maplibregl-popup-close-button {
+  color: var(--panel-fg);
+}
+.incident-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+}
+.incident-popup__meta {
+  font-size: 12px;
+  color: var(--panel-muted);
+}
+.incident-popup p {
+  margin: 2px 0 4px;
+}
+.incident-popup__btn {
+  margin-top: 4px;
+  height: 34px;
+  border: 0;
+  border-radius: 17px;
+  background: #e5484d;
+  color: #fff;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+.incident-popup__btn:disabled {
+  opacity: 0.7;
+}
+
+/* Waze-style report button + sheet */
+.report-fab {
+  position: absolute;
+  right: 14px;
+  bottom: 40px;
+  z-index: 2;
+  width: 58px;
+  height: 58px;
+  border: 0;
+  border-radius: 50%;
+  background: #e5484d;
+  color: #fff;
+  font-size: 26px;
+  line-height: 1;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+.report-fab.is-hidden {
+  display: none;
+}
+@media (min-width: 700px) {
+  .report-fab.is-hidden {
+    display: block; /* card sits top-left on desktop, so no overlap */
+  }
+}
+
+.report-sheet {
+  position: absolute;
+  right: 14px;
+  bottom: 108px;
+  z-index: 2;
+  width: min(320px, calc(100vw - 28px));
+  box-sizing: border-box;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--panel-bg);
+  color: var(--panel-fg);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
+}
+.report-sheet__title {
+  margin: 0 0 10px;
+  font-weight: 600;
+}
+.report-sheet__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.report-sheet__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 4px;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.report-sheet__item:hover {
+  background: var(--panel-hover);
+}
+.report-sheet__item:disabled {
+  opacity: 0.6;
+}
+.report-sheet__emoji {
+  font-size: 26px;
+}
+
 /* ───── Theme toggle (sits under the map controls, top right) ───── */
 .theme-toggle {
   position: absolute;
@@ -343,11 +481,72 @@ body {
   cursor: pointer;
 }
 
-/* ───── Notice (e.g. location denied) ───── */
+/* ───── Location-off bar (persistent until GPS works or a location is set) ───── */
+.location-bar {
+  position: absolute;
+  left: 10px;
+  bottom: 36px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  max-width: min(520px, calc(100vw - 100px)); /* clear of the report button */
+  box-sizing: border-box;
+  padding: 10px 12px 10px 14px;
+  border-radius: 12px;
+  background: var(--panel-bg);
+  color: var(--panel-fg);
+  font-size: 14px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+.location-bar__text {
+  flex: 1 1 200px;
+  line-height: 1.35;
+}
+.location-bar__text small {
+  display: block;
+  color: var(--panel-muted);
+  font-size: 12px;
+}
+.location-bar__actions {
+  display: flex;
+  gap: 6px;
+}
+.location-bar__btn {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.location-bar__btn--primary {
+  border-color: #2b7bff;
+  background: #2b7bff;
+  color: #fff;
+}
+
+/* Location the user set by hand: like the GPS dot, with a dashed ring */
+.manual-location {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #2b7bff;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 3px rgba(43, 123, 255, 0.35), 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* ───── Notice (short messages) ───── */
 .notice {
   position: absolute;
   left: 50%;
-  bottom: 36px;
+  bottom: 100px; /* above the location bar */
   z-index: 2;
   transform: translateX(-50%);
   max-width: calc(100vw - 32px);
