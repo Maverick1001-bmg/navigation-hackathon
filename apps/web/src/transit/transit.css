@@ -1,0 +1,192 @@
+/* Transit station & line cards. Container look comes from .place-card (index.css). */
+
+.transit-card {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 90px);
+}
+
+.transit-lines {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.transit-line-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 6px;
+  border: 0;
+  border-top: 1px solid var(--panel-border);
+  background: transparent;
+  color: var(--panel-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.transit-line-row:hover {
+  background: var(--panel-hover);
+}
+
+.transit-chip {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+
+.transit-line-row__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.transit-line-row__name {
+  font-weight: 600;
+  font-size: 15px;
+}
+.transit-line-row__ends {
+  font-size: 13px;
+  color: var(--panel-muted);
+}
+.transit-line-row__status {
+  flex: none;
+  font-size: 13px;
+  color: var(--panel-muted);
+}
+
+.transit-caption {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--panel-muted);
+}
+
+/* Line card */
+.transit-line-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 36px;
+}
+.transit-line-head__name {
+  margin: 0;
+  color: var(--line-colour);
+}
+.transit-back,
+.transit-swap {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--panel-fg);
+  font-size: 18px;
+  cursor: pointer;
+}
+.transit-back:hover,
+.transit-swap:hover {
+  background: var(--panel-hover);
+}
+
+.transit-dir {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 4px 0 2px;
+  font-size: 15px;
+  font-weight: 500;
+}
+.transit-status {
+  color: var(--panel-muted);
+}
+
+.transit-stops {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 50vh;
+  margin: 4px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.transit-stop__btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 7px 6px 7px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--panel-fg);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.transit-stop__btn:hover {
+  background: var(--panel-hover);
+}
+/* The coloured rail running through every stop */
+.transit-stop__btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 14px;
+  width: 4px;
+  background: var(--line-colour);
+}
+.transit-stop:first-child .transit-stop__btn::before { top: 50%; }
+.transit-stop:last-child .transit-stop__btn::before { bottom: 50%; }
+
+.transit-stop__dot {
+  position: relative;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  box-sizing: border-box;
+  border: 3px solid var(--line-colour);
+  border-radius: 50%;
+  background: #fff;
+}
+.transit-stop__name {
+  flex: 1;
+  min-width: 0;
+}
+.transit-stop__time {
+  flex: none;
+  font-size: 13px;
+  color: var(--panel-muted);
+}
+
+.transit-stop--here .transit-stop__name {
+  font-weight: 700;
+}
+.transit-stop--here .transit-stop__dot {
+  width: 16px;
+  height: 16px;
+  margin-left: -2px;
+  border-width: 4px;
+}
+.transit-stop--here .transit-stop__time {
+  color: var(--line-colour);
+  font-weight: 600;
+}
+.transit-stop--behind .transit-stop__btn {
+  opacity: 0.45;
+}
+
+@media (max-width: 699px) {
+  .transit-card {
+    z-index: 3; /* above MapLibre's attribution control on the bottom sheet */
+    max-height: 55vh;
+  }
+  .transit-stops {
+    max-height: none;
+  }
+}

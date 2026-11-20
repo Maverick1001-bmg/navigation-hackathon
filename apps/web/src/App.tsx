@@ -14,6 +14,7 @@ import { createIncidentMarkers, INCIDENT_INFO, type IncidentMarkers } from './in
 import ReportButton from './ReportButton'
 import { useCurrentStep } from './currentStep'
 import { use3D, useNavCamera } from './navCamera'
+import { useTransit } from './transit/useTransit' // transit
 
 const INCIDENT_POLL_MS = 5000
 const SERVER_CHECK_MS = 20_000
@@ -180,9 +181,13 @@ export default function App() {
 
   const getBias = useCallback(() => map?.getCenter() ?? KL, [map])
 
+  const transit = useTransit(map, { onOpen: () => setCardOpen(false), fitPadding }) // transit
+  const closeTransit = transit.close // transit
+
   const showPlace = useCallback(
     (place: Place) => {
       clearRoute()
+      closeTransit() // transit
       setSelectedPlace(place)
       setCardOpen(true)
       if (!map) return
@@ -196,6 +201,7 @@ export default function App() {
       el.style.cursor = 'pointer'
       el.addEventListener('click', e => {
         e.stopPropagation()
+        closeTransit() // transit
         setCardOpen(true)
       })
       pinRef.current = pin
@@ -206,7 +212,7 @@ export default function App() {
         map.flyTo({ center: [place.lng, place.lat], zoom: 16 })
       }
     },
-    [map, clearRoute],
+    [map, clearRoute, closeTransit],
   )
 
   // App layers, created once the map has loaded. Route first so result dots draw on top.
@@ -320,7 +326,11 @@ export default function App() {
 
       <SearchBox
         getBias={getBias}
-        onSelect={showPlace}
+        onSelect={place => {
+          // transit: a search result that is a rail station opens the station card instead
+          if (transit.openStationForPlace(place)) { searchLayerRef.current?.setResults([]); return }
+          showPlace(place)
+        }}
         onClear={clearPlace}
         onResults={showResults}
         onActive={highlight}
@@ -340,6 +350,8 @@ export default function App() {
           currentStep={currentStep}
         />
       )}
+
+      {transit.card /* transit */}
 
       {apiOnline && (
         <ReportButton onReport={report} hidden={!!selectedPlace && cardOpen} />
