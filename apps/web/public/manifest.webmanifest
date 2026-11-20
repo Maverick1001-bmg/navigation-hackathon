@@ -2,7 +2,6 @@
   "name": "enam",
   "short_name": "enam",
   "description": "Navigation for Malaysia",
-  "start_url": "/",
   "display": "standalone",
   "background_color": "#7350f8",
   "theme_color": "#7350f8",
