@@ -16,7 +16,7 @@ const MINOR_STREET_NAMES_FROM_ZOOM = 14
 const POIS_FROM_ZOOM = 14
 const SHOW_3D_BUILDINGS = false
 const SHOW_FOOTPATHS = false
-const SHOW_RAIL_STATIONS = true
+const SHOW_RAIL_STATIONS = false // transit/transitLayer.ts draws Rapid KL stations instead
 
 export type MapTheme = 'light' | 'dark'
 
@@ -87,6 +87,15 @@ const KEEP_SYMBOL = (l: Layer) => {
   if (l.id === 'poi_transit') return SHOW_RAIL_STATIONS
   if (l.id === 'highway-name-path') return SHOW_FOOTPATHS
   return false
+}
+
+/** Fade the base map's rail tracks while a transit line is highlighted (transit). */
+export function setRailMuted(map: MapLibreMap, muted: boolean) {
+  for (const l of baseLayers(map)) {
+    if (l['source-layer'] === 'transportation' && l.type === 'line' && roadTier(l.id) === 'rail') {
+      map.setPaintProperty(l.id, 'line-opacity', muted ? 0.25 : 1)
+    }
+  }
 }
 
 // ───────────── 1. What is shown (run once per style load) ─────────────
