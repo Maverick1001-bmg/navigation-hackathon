@@ -1,29 +1,14 @@
 # TO_UPDATE (for the Lead)
 
-## Message for the Lead's Claude: problem on the frontend side
+## Status for the Lead's Claude
+Merged: API (#6, #8), web directions (#9), web incident reports (#10). `?api=<tunnel URL>` is now read by `apps/web/src/api.ts`.
 
-The API side is done and merged (PRs #6 and #8). The live site can't use it yet because `apps/web/` on `main` has no code that calls it. Please do the following in `apps/web/` (the Lead / Member A's area, not `services/api/`):
+Still to check on the frontend (Lead / Member A's area, not `services/api/`):
+1. Place search did not work well for Cheryl on the live site. Photon itself responds (`https://photon.komoot.io/api/?q=klcc`), so reproduce it on the Vercel build and check the browser console.
+2. Warn the driver when `incidentsOnRoute` on the `Route` is not empty (the API fills it with incidents within 50 m of the route).
+3. Check that the latest Vercel deploy matches `main`.
 
-**Problems seen on https://navigation-hackathon.vercel.app**
-1. There is no "get directions" feature. Nothing in `apps/web/src` calls `/api/route`.
-2. Nothing reads the API address from the link (`?api=<tunnel URL>`), so the site can't reach the API running in Cheryl's Codespace.
-3. No report button or incident markers. Nothing calls `/api/incidents`.
-4. Place search doesn't work properly for Cheryl on the live site. The Photon service itself responds (tested `https://photon.komoot.io/api/?q=klcc`), so the bug is likely in `apps/web/src/photon.ts` / `SearchBox.tsx`, or the Vercel build is older than `main`. Please reproduce it and check the browser console.
-
-**Next actions**
-- Read `?api=` from the page URL and use it as the API base (fall back to `VITE_API_URL`).
-- Add directions: pick from/to, call `GET {api}/api/route?from=lat,lng&to=lat,lng`, draw `polyline` on the map, show `durationS` and `distanceM` on the card.
-- Add incidents: `GET {api}/api/incidents` every ~5 s for markers, `POST {api}/api/incidents` (JSON `{type, location, note?}`) for the report button, `POST {api}/api/incidents/:id/confirm`. Show a warning when `incidentsOnRoute` is not empty.
-- Call `GET {api}/api/health` first to check the connection.
-- Check that the latest Vercel deploy matches `main`.
-
-**API facts (already working)**
-- CORS is open, including `OPTIONS` preflight (204) for POST with JSON.
-- Seeded with 18 KL incidents; reports are in memory and clear when the API restarts.
-- Cheryl runs the API plus a Cloudflare tunnel from her Codespace, so the tunnel URL changes on restart. Ask Cheryl for the current one. It must stay running during the demo.
-- Phone link format: `https://navigation-hackathon.vercel.app/?api=<tunnel URL>`
-
----
+API facts: CORS is open (incl. `OPTIONS` 204), 18 seeded KL incidents, reports live in memory and clear on API restart. Cheryl runs the API plus a Cloudflare tunnel from her Codespace; the tunnel URL changes on restart, so ask Cheryl for the current one. Phone link: `https://navigation-hackathon.vercel.app/?api=<tunnel URL>`
 
 ## Decisions to note
 - Routing engine is switchable (GraphHopper default, Valhalla optional). Valhalla is a US-origin (Mapzen) tool that the project's no-US constraint excluded; an exception was approved for it.
