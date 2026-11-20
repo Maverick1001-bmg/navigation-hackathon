@@ -12,10 +12,12 @@ type Props = {
   stationId: string
   now: Date
   onPickLine: (lineId: string) => void
+  /** Back to the place card, which has Directions. */
+  onShowPlace: () => void
   onClose: () => void
 }
 
-export default function StationCard({ data, stationId, now, onPickLine, onClose }: Props) {
+export default function StationCard({ data, stationId, now, onPickLine, onShowPlace, onClose }: Props) {
   const station = data.stations.find(s => s.id === stationId)
   if (!station) return null
   const lines = linesAt(data, stationId)
@@ -42,6 +44,11 @@ export default function StationCard({ data, stationId, now, onPickLine, onClose 
         ))}
       </ul>
       <p className="transit-caption">Scheduled times</p>
+      <div className="place-card__actions">
+        <button className="place-card__btn place-card__btn--primary" onClick={onShowPlace}>
+          Directions
+        </button>
+      </div>
     </section>
   )
 }
