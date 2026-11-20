@@ -30,11 +30,20 @@ export async function route(from, to, { url, profile = "auto" }) {
   });
   if (!res.ok) throw new Error(`valhalla ${res.status}`);
   const leg = (await res.json()).trip?.legs?.[0];
+  const maneuvers = leg?.maneuvers;
   if (!leg) throw new Error("valhalla: no route");
+  const polyline = decodePolyline6(leg.shape);
+  const steps = (maneuvers ?? []).map((m) => ({
+    text: m.instruction,
+    distanceM: m.length * 1000,
+    durationS: m.time,
+    location: polyline[m.begin_shape_index] ?? polyline[0],
+  }));
   return {
-    polyline: decodePolyline6(leg.shape),
+    polyline,
     distanceM: leg.summary.length * 1000, // Valhalla default unit is km
     durationS: leg.summary.time,
     incidentsOnRoute: [],
+    steps,
   };
 }
