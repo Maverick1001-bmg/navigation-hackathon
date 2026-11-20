@@ -43,11 +43,33 @@ type PhotonFeature = { geometry: { coordinates: [number, number] }; properties: 
 
 type Ranked = { place: Place; osmKey: string; groupKey: string; order: number }
 
+// Photon is the main geocoder. If it's slow or down, fall back to Nominatim (also OSM).
+// After a Photon failure we skip it for a minute so typing doesn't wait on timeouts.
+const PHOTON_TIMEOUT_MS = 4000
+const PHOTON_RETRY_AFTER_MS = 60_000
+let photonDownUntil = 0
+
 export async function searchPlaces(
   query: string,
   near: { lng: number; lat: number },
   signal: AbortSignal,
 ): Promise<SearchEntry[]> {
+  let features: PhotonFeature[]
+  if (Date.now() < photonDownUntil) {
+    features = await fetchNominatim(query, near, signal)
+  } else {
+    try {
+      features = await fetchPhoton(query, near, signal)
+    } catch (err) {
+      if (signal.aborted) throw err // user kept typing: not a Photon failure
+      photonDownUntil = Date.now() + PHOTON_RETRY_AFTER_MS
+      features = await fetchNominatim(query, near, signal)
+    }
+  }
+  return rank(features, near)
+}
+
+async function fetchPhoton(query: string, near: { lng: number; lat: number }, signal: AbortSignal) {
   const params = new URLSearchParams({
     q: query,
     limit: String(FETCH_LIMIT),
@@ -56,14 +78,78 @@ export async function searchPlaces(
     lon: near.lng.toFixed(4),
     bbox: MALAYSIA_BBOX,
   })
-  const res = await fetch(`${PHOTON_URL}?${params}`, { signal })
-  if (!res.ok) throw new Error(`Search failed (${res.status})`)
-  const data = (await res.json()) as { features: PhotonFeature[] }
+  const res = await fetchWithTimeout(`${PHOTON_URL}?${params}`, signal, PHOTON_TIMEOUT_MS)
+  if (!res.ok) throw new Error(`Photon ${res.status}`)
+  return ((await res.json()) as { features: PhotonFeature[] }).features
+}
 
+// Nominatim fallback, converted to Photon's shape so ranking/grouping stays the same.
+// Fair use: max ~1 request/second. Only used when Photon is failing.
+type NominatimItem = {
+  osm_type?: string; osm_id?: number; category?: string; type?: string
+  lat: string; lon: string; name?: string
+  address?: Record<string, string>
+  boundingbox?: [string, string, string, string] // [minLat, maxLat, minLng, maxLng]
+}
+
+async function fetchNominatim(query: string, near: { lng: number; lat: number }, signal: AbortSignal) {
+  const d = 0.5 // ~55 km bias box around the map centre (not a hard limit)
+  const params = new URLSearchParams({
+    q: query,
+    format: 'jsonv2',
+    addressdetails: '1',
+    limit: '40',
+    countrycodes: 'my',
+    'accept-language': 'en',
+    viewbox: `${near.lng - d},${near.lat + d},${near.lng + d},${near.lat - d}`,
+  })
+  const res = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?${params}`, signal, 8000)
+  if (!res.ok) throw new Error(`Search failed (${res.status})`)
+  const items = (await res.json()) as NominatimItem[]
+  return items.map((n): PhotonFeature => {
+    const a = n.address ?? {}
+    const b = n.boundingbox?.map(Number)
+    return {
+      geometry: { coordinates: [Number(n.lon), Number(n.lat)] },
+      properties: {
+        osm_type: n.osm_type?.[0]?.toUpperCase(),
+        osm_id: n.osm_id,
+        osm_key: n.category,
+        osm_value: n.type,
+        name: n.name || undefined,
+        housenumber: a.house_number,
+        street: a.road,
+        locality: a.quarter || a.neighbourhood,
+        district: a.suburb,
+        city: a.city || a.town || a.village,
+        state: a.state,
+        extent: b && b.length === 4 && (b[1] - b[0] > 0.002 || b[3] - b[2] > 0.002)
+          ? [b[2], b[1], b[3], b[0]] // → [minLng, maxLat, maxLng, minLat]
+          : undefined,
+      },
+    }
+  })
+}
+
+// fetch that gives up after `ms`, while still honouring the caller's abort.
+async function fetchWithTimeout(url: string, outer: AbortSignal, ms: number) {
+  const ctrl = new AbortController()
+  const onAbort = () => ctrl.abort()
+  outer.addEventListener('abort', onAbort)
+  const timer = setTimeout(() => ctrl.abort(), ms)
+  try {
+    return await fetch(url, { signal: ctrl.signal })
+  } finally {
+    clearTimeout(timer)
+    outer.removeEventListener('abort', onAbort)
+  }
+}
+
+function rank(features: PhotonFeature[], near: { lng: number; lat: number }): SearchEntry[] {
   // 1. Convert + drop duplicates (OSM often has two nodes for one place)
   const seen = new Set<string>()
   const ranked: Ranked[] = []
-  data.features.forEach((f, order) => {
+  features.forEach((f, order) => {
     const place = toPlace(f, near)
     const dupKey = `${place.name}|${place.lng.toFixed(3)}|${place.lat.toFixed(3)}`
     if (seen.has(dupKey)) return
