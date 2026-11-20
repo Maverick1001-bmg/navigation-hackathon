@@ -481,17 +481,75 @@ body {
   cursor: pointer;
 }
 
-/* ───── Location-off bar (persistent until GPS works or a location is set) ───── */
-.location-bar {
+/* ───── Bottom-left stack: server status chip + location bar ───── */
+.status-stack {
   position: absolute;
   left: 10px;
   bottom: 36px;
   z-index: 2;
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: min(520px, calc(100vw - 100px)); /* clear of the report button */
+  pointer-events: none;
+}
+.status-stack > * {
+  pointer-events: auto;
+}
+@media (max-width: 699px) {
+  .status-stack--card-open {
+    display: none; /* the bottom-sheet card covers this area on phones */
+  }
+}
+
+.server-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px 7px 12px;
+  border-radius: 18px;
+  background: var(--panel-bg);
+  color: var(--panel-fg);
+  font-size: 13px;
+  line-height: 1.3;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+.server-chip--ok {
+  padding-right: 12px;
+  font-size: 12px;
+  opacity: 0.9;
+}
+.server-chip__dot {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #9aa1ad;
+}
+.server-chip--ok .server-chip__dot { background: #30a46c; }
+.server-chip--offline .server-chip__dot { background: #e5484d; animation: incident-pulse 1.2s infinite; }
+.server-chip--routing-down .server-chip__dot { background: #f59e0b; }
+.server-chip--checking .server-chip__dot { background: #9aa1ad; }
+.server-chip--none .server-chip__dot { background: #9aa1ad; }
+.server-chip__btn {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--panel-border);
+  border-radius: 13px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* ───── Location-off bar (persistent until GPS works or a location is set) ───── */
+.location-bar {
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
-  max-width: min(520px, calc(100vw - 100px)); /* clear of the report button */
   box-sizing: border-box;
   padding: 10px 12px 10px 14px;
   border-radius: 12px;
