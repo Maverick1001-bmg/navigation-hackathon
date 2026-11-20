@@ -687,3 +687,46 @@ body {
     max-height: 30vh;
   }
 }
+
+/* ───── 3D view toggle + re-centre (driving camera) ───── */
+.view-toggle {
+  position: absolute;
+  top: 187px; /* under the theme toggle */
+  right: 10px;
+  z-index: 1;
+  width: 29px;
+  height: 29px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: var(--panel-bg);
+  color: var(--panel-fg);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+}
+.view-toggle.is-on {
+  background: #2b7bff; /* route blue */
+  color: #fff;
+}
+
+.recenter-btn {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  z-index: 2;
+  transform: translateX(-50%);
+  height: 40px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 20px;
+  background: #2b7bff;
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}

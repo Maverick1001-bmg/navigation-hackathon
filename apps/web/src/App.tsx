@@ -13,6 +13,7 @@ import ServerStatusChip from './ServerStatusChip'
 import { createIncidentMarkers, INCIDENT_INFO, type IncidentMarkers } from './incidents'
 import ReportButton from './ReportButton'
 import { useCurrentStep } from './currentStep'
+import { use3D, useNavCamera } from './navCamera'
 
 const INCIDENT_POLL_MS = 5000
 const SERVER_CHECK_MS = 20_000
@@ -41,7 +42,9 @@ export default function App() {
   const [userPos, setUserPos] = useState<{ lng: number; lat: number } | null>(null)
   const [route, setRoute] = useState<Route | null>(null)
   const [routeLoading, setRouteLoading] = useState(false)
-  const currentStep = useCurrentStep(route?.steps, userPos)
+  const currentStep = useCurrentStep(route?.steps, route?.polyline, userPos)
+  const view3D = use3D(map)
+  const navCam = useNavCamera(map, view3D.is3D && !!route, route?.polyline ?? null, userPos)
   const pinRef = useRef<Marker | null>(null)
   const searchLayerRef = useRef<SearchLayer | null>(null)
   const routeLayerRef = useRef<RouteLayer | null>(null)
@@ -350,6 +353,21 @@ export default function App() {
       >
         {theme === 'dark' ? '☀️' : '🌙'}
       </button>
+
+      <button
+        className={`view-toggle${view3D.is3D ? ' is-on' : ''}`}
+        onClick={view3D.toggle}
+        aria-pressed={view3D.is3D}
+        title={view3D.is3D ? 'Switch to 2D (flat)' : 'Switch to 3D (tilt)'}
+      >
+        {view3D.is3D ? '2D' : '3D'}
+      </button>
+
+      {navCam.paused && (
+        <button className="recenter-btn" onClick={navCam.resume}>
+          ➤ Re-centre
+        </button>
+      )}
 
       {notice && (
         <div className="notice" role="status">

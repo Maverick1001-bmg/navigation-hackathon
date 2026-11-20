@@ -14,7 +14,7 @@ export const NAV_POI_CLASSES = ['fuel', 'parking', 'hospital', 'police', 'fire_s
 const MINOR_STREET_NAMES_FROM_ZOOM = 14
 /** Zoom at which top-rank POIs (fuel, hospitals...) appear (liberty default 15). */
 const POIS_FROM_ZOOM = 14
-const SHOW_3D_BUILDINGS = false
+const SHOW_3D_BUILDINGS = true
 const SHOW_FOOTPATHS = false
 const SHOW_RAIL_STATIONS = true
 
@@ -173,6 +173,7 @@ export function applyMapTheme(map: MapLibreMap, theme: MapTheme) {
         paint(id, 'fill-outline-color', c.building)
       } else if (type === 'fill-extrusion') {
         paint(id, 'fill-extrusion-color', c.building)
+        paint(id, 'fill-extrusion-opacity', 0.7) // see-through, so the route stays visible
       }
       continue
     }
