@@ -1,4 +1,4 @@
-import type { Direction, ServiceKey, ServiceSchedule } from './types.ts'
+import type { Direction, Line, ServiceKey, ServiceSchedule } from './types.ts'
 
 const DAY = 86400
 const KL_OFFSET_S = 8 * 3600 // UTC+8, no DST
@@ -52,7 +52,26 @@ export function stationStatus(d: Direction, stationId: string, now: Date): Stati
   const schedule = d.service[service]
   const { first, last } = firstLast(schedule, stop.offsetS)
   const headway = headwayAt(schedule, secs - stop.offsetS)
-  return headway === null
+  // Period ends are exclusive: nothing leaves in the last headway before `to`
+  return headway === null || secs > last
     ? { open: false, opensAt: first, first, last }
     : { open: true, everyMin: Math.round(headway / 60), first, last }
+}
+
+export function isLastStop(d: Direction, stationId: string): boolean {
+  return d.stops.length > 0 && d.stops[d.stops.length - 1].stationId === stationId
+}
+
+/**
+ * Status of trains leaving this station on the line, in any direction. Directions that only
+ * arrive here (the station is their last stop) are ignored, so termini show real departures.
+ */
+export function departureStatus(line: Line, stationId: string, now: Date): StationStatus | null {
+  const statuses = line.directions
+    .filter(d => d.stops.some(s => s.stationId === stationId) && !isLastStop(d, stationId))
+    .map(d => stationStatus(d, stationId, now))
+  if (statuses.length === 0) return null
+  const open = statuses.find(s => s.open)
+  if (open) return open
+  return statuses.reduce((a, b) => (!a.open && !b.open && b.opensAt < a.opensAt ? b : a))
 }

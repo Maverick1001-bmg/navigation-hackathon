@@ -144,6 +144,8 @@ export function addTransitLayer(
   }
 
   const onClick = (e: MapLayerMouseEvent) => {
+    // A tap on a DOM marker (incident, place pin) belongs to that marker, not the station under it
+    if ((e.originalEvent.target as Element | null)?.closest?.('.maplibregl-marker')) return
     if (map.getLayer(SEARCH_DOTS) && map.queryRenderedFeatures(e.point, { layers: [SEARCH_DOTS] }).length) return
     const id = e.features?.[0]?.properties?.id as string | undefined
     if (id) onStationClick(id)

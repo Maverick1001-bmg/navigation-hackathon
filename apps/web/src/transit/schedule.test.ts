@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { klClock, headwayAt, firstLast, formatClock, stationStatus } from './schedule.ts'
-import type { Direction, ServiceSchedule } from './types.ts'
+import { klClock, headwayAt, firstLast, formatClock, stationStatus, departureStatus, isLastStop } from './schedule.ts'
+import type { Direction, Line, ServiceSchedule } from './types.ts'
 
 const h = (hh: number, mm = 0) => hh * 3600 + mm * 60
 
@@ -63,6 +63,33 @@ test('stationStatus: closed at 23:50 Friday on a line ending 23:15, opens 06:00'
   const s = stationStatus(direction, 'S1', new Date('2026-11-20T15:50:00Z'))
   assert.equal(s.open, false)
   assert.ok(!s.open && formatClock(s.opensAt) === '06:00')
+})
+
+test('stationStatus: closed between the last departure and the period end', () => {
+  // last departure from S1 = 23:15 - 7 min = 23:08; at 23:10 Friday it is closed
+  const s = stationStatus(direction, 'S1', new Date('2026-11-20T15:10:00Z'))
+  assert.equal(s.open, false)
+})
+
+// A two-stop line: dir 0 goes S1 → S2, dir 1 goes S2 → S1 (each 10 min).
+const back: Direction = { ...direction, dir: 1, headsign: 'S1', stops: [{ stationId: 'S2', offsetS: 0 }, { stationId: 'S1', offsetS: 600 }] }
+const twoWay: Line = { id: 'L', shortName: 'L', name: 'L Line', colour: '#000000', directions: [direction, back] }
+
+test('departureStatus at a terminus uses the departing direction: opens 06:00, not first arrival', () => {
+  // 05:30 Friday KL; S2 is the last stop of dir 0 (first arrival 06:10) but dir 1 departs S2 at 06:00
+  const s = departureStatus(twoWay, 'S2', new Date('2026-11-19T21:30:00Z'))
+  assert.ok(s && !s.open && formatClock(s.opensAt) === '06:00')
+})
+
+test('departureStatus at a terminus is closed after its last departure even if arrivals continue', () => {
+  // 23:12 Friday: last departure from S2 (dir 1, offset 0) was 23:08; dir 0 still arrives at S2 until 23:18
+  const s = departureStatus(twoWay, 'S2', new Date('2026-11-20T15:12:00Z'))
+  assert.equal(s?.open, false)
+})
+
+test('isLastStop is true only at the end of a direction', () => {
+  assert.equal(isLastStop(direction, 'S2'), true)
+  assert.equal(isLastStop(direction, 'S1'), false)
 })
 
 test('stationStatus: open at 08:00 with peak headway in minutes', () => {

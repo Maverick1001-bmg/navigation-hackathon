@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { stopIndex } from './lookup'
-import { formatClock, stationStatus } from './schedule'
+import { formatClock, isLastStop, stationStatus } from './schedule'
 import type { TransitData } from './types'
 import './transit.css'
 
@@ -27,7 +27,8 @@ export default function LineCard({ data, lineId, dir, stationId, now, onPickStop
   if (!line || !direction) return null
   const here = stopIndex(direction, stationId)
   const hereOffset = here >= 0 ? direction.stops[here].offsetS : 0
-  const status = here >= 0 ? stationStatus(direction, stationId, now) : null
+  const terminus = here >= 0 && isLastStop(direction, stationId)
+  const status = here >= 0 && !terminus ? stationStatus(direction, stationId, now) : null
   const nameOf = (id: string) => data.stations.find(s => s.id === id)?.name ?? id
 
   return (
@@ -52,6 +53,7 @@ export default function LineCard({ data, lineId, dir, stationId, now, onPickStop
             : `Closed · opens ${formatClock(status.opensAt)}`}
         </p>
       )}
+      {terminus && <p className="place-card__meta transit-status">Last stop in this direction · swap ⇄ for departures</p>}
       <ol className="transit-stops">
         {direction.stops.map((stop, i) => {
           const isHere = i === here

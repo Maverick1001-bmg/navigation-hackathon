@@ -1,7 +1,9 @@
 import type { Direction, Line, Station, TransitData } from './types.ts'
 
 const SEARCH_MATCH_M = 150
-const STATION_CATEGORY = /station|halt|subway|monorail|platform|stop/i
+// Photon's prettified osm_value for rail stops. Anchored, so "Fire station", "Bus stop",
+// "Charging station" etc. stay places.
+const STATION_CATEGORY = /^(station|halt|stop|platform|subway|subway entrance|stop position|train station|monorail station)$/i
 
 export function distanceM(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const r = Math.PI / 180

@@ -1,5 +1,5 @@
-import { linesAt, stopIndex } from './lookup'
-import { formatClock, stationStatus } from './schedule'
+import { linesAt } from './lookup'
+import { departureStatus, formatClock } from './schedule'
 import type { Line, TransitData } from './types'
 import './transit.css'
 
@@ -53,8 +53,7 @@ function termini(line: Line): string {
 }
 
 function status(line: Line, stationId: string, now: Date): string {
-  const d = line.directions.find(d => stopIndex(d, stationId) >= 0)
-  if (!d) return ''
-  const s = stationStatus(d, stationId, now)
+  const s = departureStatus(line, stationId, now)
+  if (!s) return ''
   return s.open ? `every ${s.everyMin} min` : `Closed · opens ${formatClock(s.opensAt)}`
 }

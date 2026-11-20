@@ -37,6 +37,12 @@ test('stationForPlace: a restaurant at the same spot is not a station', () => {
   assert.equal(stationForPlace(data, { name: 'Nasi Kandar Pelita', category: 'Restaurant', ...near }), null)
 })
 
+test('stationForPlace: other kinds of "station" or "stop" next to a rail station stay places', () => {
+  for (const category of ['Fire station', 'Charging station', 'Police station', 'Bus stop', 'Fuel']) {
+    assert.equal(stationForPlace(data, { name: 'Balai Bomba Jalan Hang Tuah', category, ...near }), null, category)
+  }
+})
+
 test('stationForPlace: a matching station 400 m away is too far', () => {
   assert.equal(stationForPlace(data, { name: 'Masjid Jamek', category: 'Station', ...far }), null)
 })
